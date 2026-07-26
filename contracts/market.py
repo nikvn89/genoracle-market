@@ -1,134 +1,113 @@
 # v0.2.16
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
-from genlayer import *
-import json
-from dataclasses import dataclass
 
-@allow_storage
-@dataclass
-class Market:
-    question: str
-    source_url: str
-    status: str
-    yes_bets: bigint
-    no_bets: bigint
+import json
+from genlayer import *
 
 class PredictionMarketContract(gl.Contract):
-    markets: TreeMap[str, Market]
+    markets_str: str
 
     def __init__(self):
-        pass
+        self.markets_str = "{}"
 
     @gl.public.write
     def create_market(self, market_id: str, question: str, source_url: str) -> None:
-        if not market_id or not question or not source_url:
-            raise gl.vm.UserError("Missing parameters")
-        
-        self.markets[market_id] = Market(
-            question=question,
-            source_url=source_url,
-            status="OPEN",
-            yes_bets=bigint(0),
-            no_bets=bigint(0)
-        )
+        markets = json.loads(self.markets_str)
+        if market_id not in markets:
+            markets[market_id] = {
+                "question": question,
+                "source_url": source_url,
+                "status": "OPEN", # OPEN, RESOLVED_YES, RESOLVED_NO, FAILED
+                "yes_bets": 0,
+                "no_bets": 0
+            }
+            self.markets_str = json.dumps(markets)
 
     @gl.public.write
-    def place_bet(self, market_id: str, is_yes: bool) -> None:
-        if market_id not in self.markets:
-            raise gl.vm.UserError("Market not found")
+    def place_bet(self, market_id: str, is_yes: bool, amount: int) -> str:
+        markets = json.loads(self.markets_str)
+        if market_id not in markets:
+            return "Market not found"
+        if markets[market_id]["status"] != "OPEN":
+            return "Market is closed"
             
-        market = self.markets[market_id]
-        if market.status != "OPEN":
-            raise gl.vm.UserError("Market is closed")
-            
-        # Sử dụng gl.message.value để nhận tiền cược
-        amount = gl.message.value if hasattr(gl.message, "value") else bigint(0)
-        
         if is_yes:
-            market.yes_bets += amount
+            markets[market_id]["yes_bets"] += amount
         else:
-            market.no_bets += amount
+            markets[market_id]["no_bets"] += amount
+            
+        self.markets_str = json.dumps(markets)
+        return "Bet placed successfully"
 
     @gl.public.write
     def resolve_market(self, market_id: str) -> None:
-        if market_id not in self.markets:
+        markets = json.loads(self.markets_str)
+        if market_id not in markets:
             raise gl.vm.UserError("Market not found")
         
-        market = self.markets[market_id]
-        if market.status != "OPEN":
+        market = markets[market_id]
+        if market["status"] != "OPEN":
             raise gl.vm.UserError("Market already resolved")
 
-        url = market.source_url
-        req_question = market.question
-
         def leader_fn() -> str:
+            # 1. Fetch real-world news using web scraper with fail-safes
             try:
-                article_text = gl.nondet.web.render(url, mode="text")
-                if len(article_text) > 8000:
-                    article_text = article_text[:8000]
-                if not article_text.strip():
-                    article_text = "EMPTY_PAGE"
+                article_text = gl.nondet.web.render(market["source_url"], mode="text")[:2000]
             except Exception:
-                article_text = "FETCH_FAILED"
+                # Nếu web sập hoặc bị block, trả về UNKNOWN để Contract không bị revert cứng
+                return json.dumps({"decision": "UNKNOWN"})
             
-            prompt = (
-                "Based on the following news article, answer the question with exactly 'YES' or 'NO'. "
-                "If the article does not contain enough information to answer, reply 'UNKNOWN'.\n"
-                "Question: " + req_question + "\n"
-                "Article Content:\n" + article_text + "\n"
-                "Return exactly a JSON object: {\"result\": \"YES/NO/UNKNOWN\"}"
-            )
+            # 2. Ask LLM to evaluate the outcome
+            prompt = f"""
+            Based on the following news article, answer the question with exactly 'YES', 'NO', or 'UNKNOWN'.
+            If the article does not contain enough information to answer, reply 'UNKNOWN'.
             
-            ai_response = gl.nondet.exec_prompt(prompt)
+            Question: {market["question"]}
+            
+            Article Content:
+            {article_text}
+            
+            Respond EXACTLY with a JSON object: {{"decision": "YES"}} or {{"decision": "NO"}} or {{"decision": "UNKNOWN"}}
+            """
             
             try:
-                parsed = json.loads(ai_response)
-                result = str(parsed.get("result", "UNKNOWN")).upper()
-                if result not in ["YES", "NO", "UNKNOWN"]:
-                    result = "UNKNOWN"
-                return json.dumps({"result": result}, sort_keys=True)
+                ai_resp = gl.nondet.exec_prompt(prompt)
+                parsed = json.loads(ai_resp)
+                decision = str(parsed.get("decision", "UNKNOWN")).strip().upper()
+                if decision not in ["YES", "NO"]:
+                    decision = "UNKNOWN"
+                return json.dumps({"decision": decision})
             except Exception:
-                return json.dumps({"result": "UNKNOWN"}, sort_keys=True)
+                return json.dumps({"decision": "UNKNOWN"})
 
         def validator_fn(leader_res) -> bool:
-            if not isinstance(leader_res, gl.vm.Return):
-                return False
+            if not isinstance(leader_res, gl.vm.Return): return False
+            try:
+                l_data = json.loads(leader_res.value)
+                v_data = json.loads(leader_fn())
                 
-            try:
-                leader_data = json.loads(leader_res.value)
-                leader_result = leader_data.get("result", "")
+                # Semantic Consensus: Chỉ so sánh từ khóa quyết định
+                return l_data.get("decision") == v_data.get("decision")
             except Exception:
                 return False
 
-            try:
-                val_data = json.loads(leader_fn())
-                val_result = val_data.get("result", "")
-            except Exception:
-                return False
+        # Execute Non-deterministic AI logic via Semantic Consensus
+        final_res = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        final_data = json.loads(final_res)
+        decision = final_data.get("decision", "UNKNOWN")
 
-            return leader_result == val_result
-
-        final_result_str = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
-        final_data = json.loads(final_result_str)
-        
-        ai_answer = final_data["result"]
-
-        if ai_answer == "YES":
-            market.status = "RESOLVED_YES"
-        elif ai_answer == "NO":
-            market.status = "RESOLVED_NO"
+        if decision == "YES":
+            market["status"] = "RESOLVED_YES"
+        elif decision == "NO":
+            market["status"] = "RESOLVED_NO"
         else:
-            market.status = "FAILED"
+            market["status"] = "FAILED"
+            
+        self.markets_str = json.dumps(markets)
 
     @gl.public.view
     def get_market(self, market_id: str) -> str:
-        if market_id in self.markets:
-            m = self.markets[market_id]
-            return json.dumps({
-                "question": m.question,
-                "source_url": m.source_url,
-                "status": m.status,
-                "yes_bets": int(m.yes_bets),
-                "no_bets": int(m.no_bets)
-            })
+        markets = json.loads(self.markets_str)
+        if market_id in markets:
+            return json.dumps(markets[market_id])
         return "{}"

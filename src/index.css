@@ -351,3 +351,5 @@ body {
 .kanban-col { background: rgba(10, 20, 40, 0.5); border: 1px solid #1e3a8a; border-radius: 12px; padding: 20px; width: 30%; min-height: 400px; }
 .kanban-col h2 { font-size: 1.1rem; color: #60a5fa; border-bottom: 1px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
 .market-card.processing { border-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+
+.example-item:hover { background: rgba(0, 255, 136, 0.2) !important; border-left: 3px solid #00ff88; transition: all 0.2s ease; }

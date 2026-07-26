@@ -37,22 +37,27 @@ function App() {
     fetchMarketData();
   }, [marketId]);
 
-  const fetchMarketData = async () => {
+  const [fetchError, setFetchError] = useState('');
+
+  const fetchMarketData = async (idToFetch = marketId) => {
     try {
+      setFetchError('');
       const res = await client.readContract({
         address: CONTRACT_ADDRESS,
         functionName: 'get_market',
-        args: [marketId]
+        args: [idToFetch]
       });
       const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
       if (data && data.status) {
-        setMarkets({ [marketId]: data });
+        setMarkets(prev => ({ ...prev, [idToFetch]: data }));
         if (data.status.includes('RESOLVED') || data.status === 'FAILED') {
           setResolveStatus('resolved');
         }
+      } else {
+        setFetchError('Market not found on GenLayer yet.');
       }
-    } catch(e) {
-      console.log('No market found yet');
+    } catch(e: any) {
+      setFetchError(e.message || 'Error fetching data');
     }
   };
 
@@ -72,10 +77,14 @@ function App() {
         ]
       });
       
-      // Wait a bit for block
-      await new Promise(r => setTimeout(r, 4000));
-      await fetchMarketData();
-      setCreateMsg('Success: Market created on GenLayer.');
+      // Poll for 15 seconds to wait for block minting
+      for (let i = 0; i < 5; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        await fetchMarketData(marketId);
+        // If markets[marketId] exists (which fetchMarketData updates via state setter? No, fetchMarketData updates state asynchronously)
+        // Wait, fetchMarketData doesn't return data. Let's just poll.
+      }
+      setCreateMsg('Success: Market created on GenLayer. Data fetched.');
     } catch(err: any) {
       setCreateMsg('Error: ' + err.message);
     }
@@ -119,7 +128,7 @@ function App() {
     let attempt = 0;
     const interval = setInterval(async () => {
       attempt++;
-      setResolveMsg(`AI Validators are reading the news... (Attempt ${attempt}/12)`);
+      setResolveMsg(`AI Validators are reading the news... (Attempt ${attempt}/30)`);
       try {
         const res = await client.readContract({
           address: CONTRACT_ADDRESS,
@@ -247,7 +256,13 @@ function App() {
                 {betMsg && <div className="result-box">{betMsg}</div>}
               </div>
             ) : (
-              <p style={{color: '#888'}}>Initialize market first.</p>
+              <div style={{color: '#888'}}>
+                <p>Initialize market first.</p>
+                {fetchError && <p style={{color: '#ff4444', marginTop: '10px'}}>{fetchError}</p>}
+                <button type="button" className="btn-secondary" style={{marginTop: '15px'}} onClick={() => fetchMarketData(marketId)}>
+                  Refresh Status
+                </button>
+              </div>
             )}
           </div>
         </div>

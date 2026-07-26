@@ -16,11 +16,14 @@ function App() {
   
   // Market States
   const [markets, setMarkets] = useState<any>({});
-  const [marketId] = useState('1'); // Fixed market for demo
+  const [marketId, setMarketId] = useState('1');
   
   // Create Market States
   const [createLoading, setCreateLoading] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
+  
+  const [marketQuestion, setMarketQuestion] = useState("Did Argentina win the 2022 FIFA World Cup?");
+  const [marketUrl, setMarketUrl] = useState("https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final");
   
   // Bet States
   const [betLoading, setBetLoading] = useState(false);
@@ -32,7 +35,7 @@ function App() {
   
   useEffect(() => {
     fetchMarketData();
-  }, []);
+  }, [marketId]);
 
   const fetchMarketData = async () => {
     try {
@@ -64,8 +67,8 @@ function App() {
         functionName: 'create_market',
         args: [
           marketId,
-          "Will Space X launch Starship in July?",
-          "https://www.reuters.com/technology/space/spacex-starship-launch"
+          marketQuestion,
+          marketUrl
         ]
       });
       
@@ -135,9 +138,9 @@ function App() {
         // Ignore read errors
       }
       
-      if (attempt >= 15) {
+      if (attempt >= 30) {
         clearInterval(interval);
-        setResolveMsg('Timed out waiting for consensus. Please check block explorer.');
+        setResolveMsg('Still waiting for AI consensus. This can take up to 2-3 minutes on GenLayer StudioNet...');
       }
     }, 5000); // Poll mỗi 5s
   };
@@ -173,14 +176,38 @@ function App() {
             <h2><span className="icon">⚡</span> Create New Market</h2>
             <form onSubmit={handleCreate}>
               <div className="input-group">
+                <label>Market ID</label>
+                <input 
+                  type="text" 
+                  value={marketId}
+                  onChange={(e) => {
+                    setMarketId(e.target.value);
+                    setCreateMsg('');
+                    setBetMsg('');
+                    setResolveMsg('');
+                    setResolveStatus('idle');
+                  }}
+                />
+              </div>
+              <div className="input-group">
                 <label>Question to Predict</label>
-                <input type="text" readOnly value="Will Space X launch Starship in July?" />
+                <input 
+                  type="text" 
+                  value={marketQuestion}
+                  onChange={(e) => setMarketQuestion(e.target.value)}
+                  disabled={!!market}
+                />
               </div>
               <div className="input-group">
                 <label>Source of Truth (News URL)</label>
-                <input type="url" readOnly value="https://www.reuters.com/technology/space/spacex-starship-launch" />
+                <input 
+                  type="url" 
+                  value={marketUrl}
+                  onChange={(e) => setMarketUrl(e.target.value)}
+                  disabled={!!market}
+                />
               </div>
-              <button type="submit" className="btn-primary" disabled={createLoading || market}>
+              <button type="submit" className="btn-primary" disabled={createLoading || !!market}>
                 {createLoading ? <div className="loader"></div> : (market ? 'Market Exists' : 'Initialize Market')}
               </button>
             </form>

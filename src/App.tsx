@@ -253,15 +253,36 @@ function App() {
           {/* Place Bet Panel */}
           <div className="cyber-panel">
             <h2><span className="icon">🎲</span> Active Markets (Your History)</h2>
-            <button className="btn-secondary" onClick={fetchAllMarkets} style={{marginBottom: '15px'}}>
-              Refresh Status
-            </button>
+            <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+              <button className="btn-primary" onClick={fetchAllMarkets} style={{width: 'auto', padding: '8px 15px', fontSize: '12px'}}>
+                🔄 Refresh Status
+              </button>
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to clear your local market history? (This does not delete data from the blockchain)")) {
+                    setMarketIds([]);
+                    localStorage.removeItem('genOracleMarkets');
+                  }
+                }} 
+                style={{width: 'auto', padding: '8px 15px', fontSize: '12px', background: '#333'}}
+              >
+                🗑️ Clear History
+              </button>
+            </div>
             
             {marketIds.length === 0 && <p style={{color: '#888'}}>No markets created yet.</p>}
             
             {marketIds.map(id => {
               const market = markets[id];
-              if (!market) return null;
+              if (!market) return (
+                <div key={id} className="market-card" style={{marginBottom: '20px', border: '1px dashed #ffd700'}}>
+                  <div className="loader" style={{margin: '10px auto'}}></div>
+                  <p style={{textAlign: 'center', fontSize: '12px', color: '#ffd700'}}>
+                    Blockchain is processing this market... (Pending)
+                  </p>
+                </div>
+              );
               
               return (
                 <div key={id} className="market-card" style={{marginBottom: '20px'}}>

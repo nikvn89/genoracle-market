@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import './index.css';
-import { createClient } from 'genlayer-js';
+import { createClient, createAccount } from 'genlayer-js';
 
-// Khởi tạo GenLayer Client (dùng RPC Studio)
+// Khởi tạo GenLayer Client và Account
 const client = createClient({
-  endpoint: 'https://rpc-studio.genlayer.com',
-  privateKey: import.meta.env.VITE_PRIVATE_KEY || '0x32ddb03a893081e7dff1b1ef732a3d0cb8dccdf41ea87bcce09338b76176378f'
+  endpoint: 'https://rpc-studio.genlayer.com'
 });
+const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x32ddb03a893081e7dff1b1ef732a3d0cb8dccdf41ea87bcce09338b76176378f');
 
 // THAY ĐỊA CHỈ CONTRACT SAU KHI DEPLOY VÀO ĐÂY!
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xAF6d04CbcF8E25046ac6118f5Ea9148D9E4D1Ed5'; 
@@ -59,6 +59,7 @@ function App() {
     setCreateMsg('Creating market on GenLayer...');
     try {
       await client.writeContract({
+        account,
         address: CONTRACT_ADDRESS,
         functionName: 'create_market',
         args: [
@@ -84,6 +85,7 @@ function App() {
     setBetMsg(`Placing ${isYes ? 'YES' : 'NO'} bet...`);
     try {
       await client.writeContract({
+        account,
         address: CONTRACT_ADDRESS,
         functionName: 'place_bet',
         args: [marketId, isYes, 100]
@@ -104,6 +106,7 @@ function App() {
     
     // Asynchronous background call
     client.writeContract({
+      account,
       address: CONTRACT_ADDRESS,
       functionName: 'resolve_market',
       args: [marketId]

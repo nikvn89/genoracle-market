@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 import { createClient, createAccount } from 'genlayer-js';
-import { studionet } from 'genlayer-js/chains';
 
 // Khởi tạo GenLayer Client và Account
 const client = createClient({
-  chain: studionet
+  endpoint: '/api/rpc'
 });
 const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x32ddb03a893081e7dff1b1ef732a3d0cb8dccdf41ea87bcce09338b76176378f');
 

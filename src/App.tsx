@@ -79,7 +79,18 @@ function App() {
       // Poll for block minting
       for (let i = 0; i < 5; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        await fetchAllMarkets();
+        try {
+          const res = await client.readContract({
+            address: CONTRACT_ADDRESS,
+            functionName: 'get_market',
+            args: [newMarketId]
+          });
+          const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+          if (data && data.status) {
+            setMarkets(prev => ({ ...prev, [newMarketId]: data }));
+            break; // Break early if minted
+          }
+        } catch(e) {}
       }
       setCreateMsg('Success: Market created on GenLayer.');
       setMarketQuestion('');

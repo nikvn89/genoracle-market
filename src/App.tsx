@@ -164,14 +164,37 @@ function App() {
     }, 5000);
   };
 
+  const [walletConnected, setWalletConnected] = useState(false);
+  
   // Filter markets for Kanban
   const pendingMarkets = marketIds.filter(id => markets[id] && markets[id].status === 'OPEN' && !loadingStates[`res_${id}`]);
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
   const resolvedMarkets = marketIds.filter(id => markets[id] && markets[id].status !== 'OPEN');
 
+  const handleConnectWallet = () => {
+    setWalletConnected(true);
+  };
+
   return (
     <div className="app-container">
-      <div className="cyber-header">
+      <div className="top-nav" style={{display: 'flex', justifyContent: 'flex-end', padding: '15px 30px'}}>
+        {!walletConnected ? (
+          <button 
+            className="btn-primary" 
+            style={{background: 'linear-gradient(90deg, #ff007f 0%, #7928ca 100%)', border: 'none', padding: '10px 20px', borderRadius: '20px'}}
+            onClick={handleConnectWallet}
+          >
+            🔗 Connect GenLayer Wallet
+          </button>
+        ) : (
+          <div style={{background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '8px 15px', borderRadius: '20px', color: '#00ff88', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+            <div style={{width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 8px #00ff88'}}></div>
+            {account.address.substring(0, 6)}...{account.address.substring(account.address.length - 4)}
+          </div>
+        )}
+      </div>
+
+      <div className="cyber-header" style={{paddingTop: '0'}}>
         <h1>GEN<span className="highlight">ORACLE</span></h1>
         <p>Intelligent Prediction Market Powered by GenVM AI</p>
       </div>

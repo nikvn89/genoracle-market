@@ -12,6 +12,5 @@ GenOracle replaces traditional Oracles with GenLayer’s Intelligent Contracts. 
 - **Asynchronous UX:** We implemented a Kanban-style dashboard with background polling. When a user triggers the AI Oracle, the UI moves to a "Processing" state without freezing, delivering a smooth, production-ready Web3 experience.
 
 ## 🚀 Live Links
-- **Contract Address (StudioNet):** 0xAF6d04CbcF8E25046ac6118f5Ea9148D9E4D1Ed5
-- **Live dApp:** [Insert your Vercel Link Here]
-- **Demo Video:** [Insert your Loom/YouTube Link Here]
+- **Contract Address (StudioNet)**: 0xAF6d04CbcF8E25046ac6118f5Ea9148D9E4D1Ed5
+- **Live dApp**: [https://genoracle-market-vuov.vercel.app/](https://genoracle-market-vuov.vercel.app/)

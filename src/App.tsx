@@ -6,7 +6,7 @@ import { createClient, createAccount } from 'genlayer-js';
 const client = createClient({
   endpoint: '/api/rpc'
 });
-const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x32ddb03a893081e7dff1b1ef732a3d0cb8dccdf41ea87bcce09338b76176378f');
+const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // THAY ĐỊA CHỈ CONTRACT SAU KHI DEPLOY VÀO ĐÂY!
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xAF6d04CbcF8E25046ac6118f5Ea9148D9E4D1Ed5'; 

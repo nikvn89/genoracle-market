@@ -266,6 +266,7 @@ function App() {
             </form>
             {createMsg && <div className="result-box success">{createMsg}</div>}
 
+            {/* QUICK TEST EXAMPLES ADDED HERE */}
             <div style={{marginTop: '25px', padding: '15px', background: 'rgba(0, 210, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 210, 255, 0.2)'}}>
               <h3 style={{fontSize: '13px', color: '#00d2ff', marginBottom: '10px'}}>🎯 Quick Test Examples (Click to fill)</h3>
               
@@ -275,7 +276,7 @@ function App() {
                 onClick={() => {
                   setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
                   setMarketUrl('https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final');
-                  setMarketDeadline('2022-12-19'); // Past date for immediate resolution
+                  setMarketDeadline('2022-12-19'); 
                 }}
               >
                 <strong>Sports:</strong> Did Argentina win the 2022 FIFA World Cup?
@@ -287,7 +288,7 @@ function App() {
                 onClick={() => {
                   setMarketQuestion('Is SpaceX Starship the tallest rocket ever built?');
                   setMarketUrl('https://en.wikipedia.org/wiki/SpaceX_Starship');
-                  setMarketDeadline('2023-01-01'); // Past date for immediate resolution
+                  setMarketDeadline('2023-01-01');
                 }}
               >
                 <strong>Space:</strong> Is SpaceX Starship the tallest rocket ever built?
@@ -299,7 +300,7 @@ function App() {
                 onClick={() => {
                   setMarketQuestion('Did Apple release the Vision Pro in 2024?');
                   setMarketUrl('https://en.wikipedia.org/wiki/Apple_Vision_Pro');
-                  setMarketDeadline('2024-03-01'); // Past date for immediate resolution
+                  setMarketDeadline('2024-03-01');
                 }}
               >
                 <strong>Tech:</strong> Did Apple release the Vision Pro in 2024?
@@ -309,7 +310,14 @@ function App() {
 
           <div className="cyber-panel">
             <h2><span className="icon">🎲</span> Active Markets</h2>
-            <button className="btn-primary" onClick={fetchAllMarkets} style={{marginBottom: '15px'}}>🔄 Refresh Status</button>
+            <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+              <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '12px', width: 'auto'}}>🔄 Refresh Status</button>
+              <button className="btn-secondary" onClick={() => { setMarketIds([]); localStorage.removeItem('genOracleMarkets'); }} style={{padding: '8px 15px', fontSize: '12px', width: 'auto', background: '#333'}}>🗑️ Clear History</button>
+            </div>
+            
+            {/* THÊM DÒNG NÀY ĐỂ GIAO DIỆN KHÔNG BỊ TRỐNG */}
+            {marketIds.length === 0 && <p style={{color: '#888', textAlign: 'center', marginTop: '30px'}}>No markets created yet. Create one on the left!</p>}
+
             {marketIds.map(id => {
               const market = markets[id];
               if (!market) return null;
@@ -355,6 +363,7 @@ function App() {
         <div className="kanban-layout">
           <div className="kanban-col">
             <h2>⏳ Pending AI Analysis</h2>
+            {pendingMarkets.length === 0 && <p style={{color: '#555', textAlign: 'center'}}>No pending markets.</p>}
             {pendingMarkets.map(id => (
               <div key={id} className="market-card">
                 <h3>{markets[id].question}</h3>
@@ -375,6 +384,7 @@ function App() {
           
           <div className="kanban-col">
             <h2>🧠 GenVM Processing</h2>
+            {processingMarkets.length === 0 && <p style={{color: '#555', textAlign: 'center'}}>No AI processing running.</p>}
             {processingMarkets.map(id => (
               <div key={id} className="market-card processing">
                 <div className="ai-scanning"><div className="scan-line"></div></div>
@@ -386,6 +396,7 @@ function App() {
 
           <div className="kanban-col">
             <h2>✅ Resolved Markets</h2>
+            {resolvedMarkets.length === 0 && <p style={{color: '#555', textAlign: 'center'}}>No resolved markets.</p>}
             {resolvedMarkets.map(id => (
               <div key={id} className="market-card success glow">
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>

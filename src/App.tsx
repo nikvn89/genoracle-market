@@ -9,7 +9,7 @@ const client = createClient({
 const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xFc382b103803d7161c74a1568E92C57D662b9399'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xD44aC5c1F0E9DECf2aC1b355bCaAd8EFAB4fC2e2'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -275,8 +275,8 @@ function App() {
                 style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final');
-                  setMarketDeadline('2022-12-19'); // Past date for immediate resolution
+                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/2022_FIFA_World_Cup_final');
+                  setMarketDeadline('2022-12-19');
                 }}
               >
                 <strong>Sports:</strong> Did Argentina win the 2022 FIFA World Cup?
@@ -287,8 +287,8 @@ function App() {
                 style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Is SpaceX Starship the tallest rocket ever built?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/SpaceX_Starship');
-                  setMarketDeadline('2023-01-01'); // Past date for immediate resolution
+                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/SpaceX_Starship');
+                  setMarketDeadline('2023-01-01');
                 }}
               >
                 <strong>Space:</strong> Is SpaceX Starship the tallest rocket ever built?
@@ -299,8 +299,8 @@ function App() {
                 style={{padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Did Apple release the Vision Pro in 2024?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/Apple_Vision_Pro');
-                  setMarketDeadline('2024-03-01'); // Past date for immediate resolution
+                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/Apple_Vision_Pro');
+                  setMarketDeadline('2024-03-01');
                 }}
               >
                 <strong>Tech:</strong> Did Apple release the Vision Pro in 2024?

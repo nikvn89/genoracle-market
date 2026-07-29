@@ -113,13 +113,24 @@ function App() {
       setMarketIds(newIds);
       localStorage.setItem('genOracleMarkets', JSON.stringify(newIds));
       
-      // Poll
-      for (let i = 0; i < 5; i++) {
+      // Poll until market appears on blockchain
+      setCreateMsg('Waiting for blockchain confirmation...');
+      for (let i = 0; i < 8; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        await fetchAllMarkets();
-        if (markets[newMarketId]) break;
+        try {
+          const res = await client.readContract({
+            address: CONTRACT_ADDRESS,
+            functionName: 'get_market',
+            args: [newMarketId]
+          });
+          const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+          if (data && data.status) {
+            setMarkets((prev: any) => ({ ...prev, [newMarketId]: data }));
+            break;
+          }
+        } catch(e) {}
       }
-      setCreateMsg('Success: Market created.');
+      setCreateMsg('✅ Market created successfully!');
       setMarketQuestion('');
       setMarketUrl('');
       setMarketDeadline('');
@@ -310,7 +321,10 @@ function App() {
 
           <div className="cyber-panel">
             <h2><span className="icon">🎲</span> Active Markets</h2>
-            <button className="btn-primary" onClick={fetchAllMarkets} style={{marginBottom: '15px'}}>🔄 Refresh Status</button>
+            <div style={{display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap'}}>
+              <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '12px', flex: '1', minWidth: '120px'}}>🔄 Refresh Status</button>
+              <button onClick={() => { if(window.confirm('Clear all market history?')) { setMarketIds([]); setMarkets({}); localStorage.removeItem('genOracleMarkets'); }}} style={{padding: '8px 15px', fontSize: '12px', flex: '1', minWidth: '120px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer'}}>🗑️ Clear History</button>
+            </div>
             {marketIds.map(id => {
               const market = markets[id];
               if (!market) return null;

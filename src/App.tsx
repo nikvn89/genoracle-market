@@ -265,6 +265,46 @@ function App() {
               </button>
             </form>
             {createMsg && <div className="result-box success">{createMsg}</div>}
+
+            <div style={{marginTop: '25px', padding: '15px', background: 'rgba(0, 210, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 210, 255, 0.2)'}}>
+              <h3 style={{fontSize: '13px', color: '#00d2ff', marginBottom: '10px'}}>🎯 Quick Test Examples (Click to fill)</h3>
+              
+              <div 
+                className="example-item" 
+                style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
+                onClick={() => {
+                  setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
+                  setMarketUrl('https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final');
+                  setMarketDeadline('2022-12-19'); // Past date for immediate resolution
+                }}
+              >
+                <strong>Sports:</strong> Did Argentina win the 2022 FIFA World Cup?
+              </div>
+              
+              <div 
+                className="example-item" 
+                style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
+                onClick={() => {
+                  setMarketQuestion('Is SpaceX Starship the tallest rocket ever built?');
+                  setMarketUrl('https://en.wikipedia.org/wiki/SpaceX_Starship');
+                  setMarketDeadline('2023-01-01'); // Past date for immediate resolution
+                }}
+              >
+                <strong>Space:</strong> Is SpaceX Starship the tallest rocket ever built?
+              </div>
+
+              <div 
+                className="example-item" 
+                style={{padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
+                onClick={() => {
+                  setMarketQuestion('Did Apple release the Vision Pro in 2024?');
+                  setMarketUrl('https://en.wikipedia.org/wiki/Apple_Vision_Pro');
+                  setMarketDeadline('2024-03-01'); // Past date for immediate resolution
+                }}
+              >
+                <strong>Tech:</strong> Did Apple release the Vision Pro in 2024?
+              </div>
+            </div>
           </div>
 
           <div className="cyber-panel">

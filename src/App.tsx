@@ -9,7 +9,7 @@ const client = createClient({
 const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xA3A8b95f3f48757cDAd2A68b9EcFFD084f83f34D'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xFc382b103803d7161c74a1568E92C57D662b9399'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -62,9 +62,16 @@ function App() {
         functionName: 'faucet',
         args: [account.address]
       });
-      await new Promise(r => setTimeout(r, 3000));
-      await fetchBalance();
-    } catch(e) {}
+      // Poll until balance increases (up to 30s)
+      const prevBalance = balance;
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        await fetchBalance();
+        if (balance > prevBalance) break;
+      }
+    } catch(e: any) {
+      alert('Faucet error: ' + e.message);
+    }
     setLoadingStates(prev => ({...prev, faucet: false}));
   };
 

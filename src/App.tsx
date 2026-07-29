@@ -9,7 +9,7 @@ const client = createClient({
 const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xBeC0E1A50f7e529A51557796Bf6eed91bA560724'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xe9B47734B75f7F43A8C87E242E743998F9633ABd'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -145,31 +145,10 @@ function App() {
     setLoadingStates(prev => ({...prev, [`bet_${id}`]: false}));
   };
 
-  const handleLock = async (e: React.FormEvent, id: string) => {
-    e.preventDefault();
-    setLoadingStates(prev => ({...prev, [`res_${id}`]: true}));
-    setMessages(prev => ({...prev, [`res_${id}`]: 'Checking WorldTimeAPI to Lock Market...'}));
-    
-    client.writeContract({
-      account, address: CONTRACT_ADDRESS, functionName: 'lock_market', args: [id]
-    }).catch(console.error);
-
-    let attempt = 0;
-    const interval = setInterval(async () => {
-      attempt++;
-      await fetchAllMarkets();
-      if (markets[id]?.status === 'LOCKED' || attempt >= 20) {
-        clearInterval(interval);
-        setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
-        setMessages(prev => ({...prev, [`res_${id}`]: markets[id]?.status === 'LOCKED' ? 'Market Locked.' : 'Lock failed or too early.'}));
-      }
-    }, 5000);
-  };
-
   const handleResolve = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     setLoadingStates(prev => ({...prev, [`res_${id}`]: true}));
-    setMessages(prev => ({...prev, [`res_${id}`]: 'Triggering AI Oracle...'}));
+    setMessages(prev => ({...prev, [`res_${id}`]: 'Sending to AI Oracle...'}));
     
     client.writeContract({
       account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id]
@@ -178,13 +157,28 @@ function App() {
     let attempt = 0;
     const interval = setInterval(async () => {
       attempt++;
-      setMessages(prev => ({...prev, [`res_${id}`]: `AI Validators reading news... (Attempt ${attempt}/30)`}));
+      setMessages(prev => ({...prev, [`res_${id}`]: `AI Validators reading source... (${attempt * 5}s elapsed)`}));
       await fetchAllMarkets();
-      if (markets[id]?.status.startsWith('RESOLVED')) {
+      // Check if market moved out of OPEN state
+      const res = await client.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: 'get_market',
+        args: [id]
+      }).catch(() => null);
+      if (res) {
+        const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+        if (data.status && data.status !== 'OPEN') {
+          clearInterval(interval);
+          setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
+          setMarkets((prev: any) => ({ ...prev, [id]: data }));
+          return;
+        }
+      }
+      if (attempt >= 40) {
         clearInterval(interval);
         setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
+        setMessages(prev => ({...prev, [`res_${id}`]: 'Timeout - GenVM network may be congested. Refresh to check.'}));
       }
-      if (attempt >= 30) clearInterval(interval);
     }, 5000);
   };
 
@@ -358,17 +352,11 @@ function App() {
             {pendingMarkets.map(id => (
               <div key={id} className="market-card">
                 <h3>{markets[id].question}</h3>
-                <div style={{fontSize: '11px', color: '#ff3366', margin: '10px 0'}}>Deadline: {markets[id].deadline}</div>
-                
-                {markets[id].status === 'OPEN' ? (
-                  <button type="button" className="btn-secondary" onClick={(e) => handleLock(e, id)}>
-                    1. Lock Market (Time Check)
-                  </button>
-                ) : (
-                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
-                    2. Trigger GenLayer AI
-                  </button>
-                )}
+                <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
+                <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
+                <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
+                  🤖 Trigger GenLayer AI
+                </button>
               </div>
             ))}
           </div>

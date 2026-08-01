@@ -20,6 +20,7 @@ function App() {
     return JSON.parse(localStorage.getItem('genOracleMarkets') || '[]');
   });
   const [balance, setBalance] = useState<number>(0);
+  const [allBalances, setAllBalances] = useState<{[key: string]: number}>({});
   
   const [createLoading, setCreateLoading] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
@@ -48,6 +49,7 @@ function App() {
       });
       const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
       if (data && data.balances) {
+        setAllBalances(data.balances);
         // Smart contract stores balances in lowercase, so we need to match it
         const lowerAddress = account.address.toLowerCase();
         const newBalance = data.balances[lowerAddress] || data.balances[account.address] || 0;

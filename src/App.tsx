@@ -370,11 +370,6 @@ function App() {
                   )}
                   
                   {market.status === 'OPEN' ? (
-                    (new Date() > new Date(market.deadline) && !demoMode) ? (
-                      <div className="result-box glow" style={{marginTop: '10px', background: 'rgba(255,165,0,0.1)', color: '#ffa500', borderColor: '#ffa500'}}>
-                        🔒 Betting Closed (Awaiting AI Resolution)
-                      </div>
-                    ) : (
                       <form>
                         <div className="input-group" style={{marginTop: '10px'}}>
                           <input type="number" value={betAmounts[id] || 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: Number(e.target.value)}))} min="1" />
@@ -384,7 +379,6 @@ function App() {
                           <button type="button" className="btn-no" onClick={(e) => handleBet(e, id, false)} disabled={loadingStates[`bet_${id}`]}>BET NO</button>
                         </div>
                       </form>
-                    )
                   ) : (
                     <div className="result-box glow" style={{marginTop: '10px'}}>Resolved: {market.status}</div>
                   )}

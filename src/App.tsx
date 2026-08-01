@@ -224,7 +224,7 @@ function App() {
   
   const pendingMarkets = marketIds.filter(id => markets[id] && (markets[id].status === 'OPEN' || markets[id].status === 'LOCKED') && !loadingStates[`res_${id}`]);
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
-  const resolvedMarkets = marketIds.filter(id => markets[id] && markets[id].status.startsWith('RESOLVED'));
+  const resolvedMarkets = marketIds.filter(id => markets[id] && (markets[id].status.startsWith('RESOLVED') || markets[id].status === 'FAILED'));
 
   return (
     <div className="app-container">
@@ -291,7 +291,7 @@ function App() {
                 style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
-                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/2022_FIFA_World_Cup_final');
+                  setMarketUrl('https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final');
                   setMarketDeadline('2022-12-19');
                 }}
               >
@@ -303,7 +303,7 @@ function App() {
                 style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Is SpaceX Starship the tallest rocket ever built?');
-                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/SpaceX_Starship');
+                  setMarketUrl('https://en.wikipedia.org/wiki/SpaceX_Starship');
                   setMarketDeadline('2023-01-01');
                 }}
               >
@@ -315,7 +315,7 @@ function App() {
                 style={{padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
                 onClick={() => {
                   setMarketQuestion('Did Apple release the Vision Pro in 2024?');
-                  setMarketUrl('https://en.wikipedia.org/api/rest_v1/page/summary/Apple_Vision_Pro');
+                  setMarketUrl('https://en.wikipedia.org/wiki/Apple_Vision_Pro');
                   setMarketDeadline('2024-03-01');
                 }}
               >

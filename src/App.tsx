@@ -168,13 +168,35 @@ function App() {
     const amount = betAmounts[id] || 100;
     
     try {
+      const prevMarket = markets[id];
+      const prevPool = isYes ? (prevMarket?.yes_pool || 0) : (prevMarket?.no_pool || 0);
+
       await client.writeContract({
         account,
         address: CONTRACT_ADDRESS,
         functionName: 'place_bet',
         args: [id, account.address.toLowerCase(), isYes, amount]
       });
-      await new Promise(r => setTimeout(r, 4000));
+      
+      setMessages(prev => ({...prev, [`bet_${id}`]: `Waiting for blockchain confirmation...`}));
+      
+      // Poll until market updates (up to 30s)
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const res = await client.readContract({
+            address: CONTRACT_ADDRESS,
+            functionName: 'get_market',
+            args: [id]
+          });
+          const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+          const currentPool = isYes ? data.yes_pool : data.no_pool;
+          if (currentPool > prevPool) {
+            break;
+          }
+        } catch(e) {}
+      }
+      
       await fetchAllMarkets();
       setMessages(prev => ({...prev, [`bet_${id}`]: `Success: Bet placed on ${isYes ? 'YES' : 'NO'}.`}));
     } catch(err: any) {

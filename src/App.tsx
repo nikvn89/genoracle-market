@@ -337,6 +337,22 @@ function App() {
                 <strong>Tech:</strong> Did Apple release the Vision Pro in 2024?
               </div>
             </div>
+
+            <div className="cyber-panel" style={{marginTop: '30px', background: 'rgba(20, 30, 40, 0.8)', padding: '20px'}}>
+              <h2 style={{color: '#ffcc00', borderColor: '#ffcc00', fontSize: '1.4rem'}}><span className="icon">🏆</span> Global Leaderboard</h2>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                {Object.entries(allBalances)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 5)
+                  .map(([addr, bal], idx) => (
+                    <div key={addr} style={{display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', borderLeft: idx === 0 ? '4px solid #ffcc00' : (idx === 1 ? '4px solid #c0c0c0' : (idx === 2 ? '4px solid #cd7f32' : '4px solid #444'))}}>
+                      <span style={{color: idx === 0 ? '#ffcc00' : '#fff', fontWeight: 'bold'}}>{idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`))} {addr.substring(0,6)}...{addr.substring(addr.length-4)}</span>
+                      <span style={{color: '#00ff88', fontWeight: 'bold'}}>{bal} G-USD</span>
+                    </div>
+                  ))}
+                {Object.keys(allBalances).length === 0 && <div style={{textAlign: 'center', color: '#888', padding: '10px'}}>No traders yet</div>}
+              </div>
+            </div>
           </div>
 
           <div className="cyber-panel">

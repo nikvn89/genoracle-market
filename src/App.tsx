@@ -2,17 +2,22 @@ import { useState, useEffect } from 'react';
 import './index.css';
 import { createClient, createAccount } from 'genlayer-js';
 
-// Khởi tạo GenLayer Client và Account
+// Khởi tạo GenLayer Client
 const client = createClient({
   endpoint: '/api/rpc'
 });
-const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // V2 Contract Address
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x5AeFD2B7F70D7951Fb76A37fA4660311cfD747a0'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
+  
+  // Wallet Switcher State
+  const [activeWallet, setActiveWallet] = useState<'A' | 'B'>('A');
+  const accountA = React.useMemo(() => createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28'), []);
+  const accountB = React.useMemo(() => createAccount('0x8888888888888888888888888888888888888888888888888888888888888888'), []);
+  const account = activeWallet === 'A' ? accountA : accountB;
   
   // Market States
   const [markets, setMarkets] = useState<any>({});
@@ -38,7 +43,7 @@ function App() {
   useEffect(() => {
     fetchAllMarkets();
     fetchBalance();
-  }, [marketIds]);
+  }, [marketIds, activeWallet]);
 
   const fetchBalance = async () => {
     try {
@@ -258,11 +263,25 @@ function App() {
         </div>
       </div>
 
-      <div className="cyber-header" style={{paddingTop: '0'}}>
+      <div className="cyber-header">
         <h1>GEN<span className="highlight">ORACLE</span> V2</h1>
         <p>DeFi Prediction Market Powered by GenVM AI & Objective Timing</p>
-        <div style={{color: '#00d2ff', fontSize: '14px', marginTop: '10px', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,210,255,0.5)'}}>
-          🕒 Current System Time: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+        <p style={{fontSize: '12px', marginTop: '5px'}}>⏰ <strong style={{color: '#00d2ff'}}>Current System Time: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</strong></p>
+        
+        {/* WALLET SWITCHER FOR DEMO */}
+        <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center', gap: '15px'}}>
+          <button 
+            onClick={() => setActiveWallet('A')}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? '#66fcf1' : 'rgba(102, 252, 241, 0.1)', color: activeWallet === 'A' ? '#000' : '#66fcf1', border: '1px solid #66fcf1', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(102,252,241,0.5)' : 'none'}}
+          >
+            🧑 Wallet A
+          </button>
+          <button 
+            onClick={() => setActiveWallet('B')}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'B' ? '#ff3366' : 'rgba(255, 51, 102, 0.1)', color: activeWallet === 'B' ? '#fff' : '#ff3366', border: '1px solid #ff3366', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'B' ? '0 0 15px rgba(255,51,102,0.5)' : 'none'}}
+          >
+            🕵️ Wallet B
+          </button>
         </div>
       </div>
 

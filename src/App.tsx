@@ -252,6 +252,9 @@ function App() {
       <div className="cyber-header" style={{paddingTop: '0'}}>
         <h1>GEN<span className="highlight">ORACLE</span> V2</h1>
         <p>DeFi Prediction Market Powered by GenVM AI & Objective Timing</p>
+        <div style={{color: '#00d2ff', fontSize: '14px', marginTop: '10px', fontWeight: 'bold', textShadow: '0 0 5px rgba(0,210,255,0.5)'}}>
+          🕒 Current System Time: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+        </div>
       </div>
 
       <div className="tab-container">
@@ -354,15 +357,21 @@ function App() {
                   )}
                   
                   {market.status === 'OPEN' ? (
-                    <form>
-                      <div className="input-group" style={{marginTop: '10px'}}>
-                        <input type="number" value={betAmounts[id] || 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: Number(e.target.value)}))} min="1" />
+                    new Date() > new Date(market.deadline) ? (
+                      <div className="result-box glow" style={{marginTop: '10px', background: 'rgba(255,165,0,0.1)', color: '#ffa500', borderColor: '#ffa500'}}>
+                        🔒 Betting Closed (Awaiting AI Resolution)
                       </div>
-                      <div className="bet-buttons">
-                        <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BET YES</button>
-                        <button type="button" className="btn-no" onClick={(e) => handleBet(e, id, false)} disabled={loadingStates[`bet_${id}`]}>BET NO</button>
-                      </div>
-                    </form>
+                    ) : (
+                      <form>
+                        <div className="input-group" style={{marginTop: '10px'}}>
+                          <input type="number" value={betAmounts[id] || 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: Number(e.target.value)}))} min="1" />
+                        </div>
+                        <div className="bet-buttons">
+                          <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BET YES</button>
+                          <button type="button" className="btn-no" onClick={(e) => handleBet(e, id, false)} disabled={loadingStates[`bet_${id}`]}>BET NO</button>
+                        </div>
+                      </form>
+                    )
                   ) : (
                     <div className="result-box glow" style={{marginTop: '10px'}}>Resolved: {market.status}</div>
                   )}
@@ -383,9 +392,16 @@ function App() {
                 <h3>{markets[id].question}</h3>
                 <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
                 <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
-                <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
-                  🤖 Trigger GenLayer AI
-                </button>
+                
+                {new Date() < new Date(markets[id].deadline) ? (
+                  <button type="button" className="btn-resolve" disabled style={{background: 'rgba(255,255,255,0.1)', color: '#888', cursor: 'not-allowed', borderColor: '#555'}}>
+                    ⏳ Waiting for Deadline...
+                  </button>
+                ) : (
+                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
+                    🤖 Trigger GenLayer AI
+                  </button>
+                )}
               </div>
             ))}
           </div>

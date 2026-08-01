@@ -133,7 +133,18 @@ class PredictionMarketContract(gl.Contract):
             
             try:
                 ai_resp = gl.nondet.exec_prompt(prompt)
-                parsed = json.loads(ai_resp)
+                
+                # Clean markdown backticks if AI added them
+                clean_resp = ai_resp.strip()
+                if clean_resp.startswith("```json"):
+                    clean_resp = clean_resp[7:]
+                elif clean_resp.startswith("```"):
+                    clean_resp = clean_resp[3:]
+                if clean_resp.endswith("```"):
+                    clean_resp = clean_resp[:-3]
+                clean_resp = clean_resp.strip()
+                
+                parsed = json.loads(clean_resp)
                 decision = str(parsed.get("decision", "UNKNOWN")).strip().upper()
                 if decision not in ["YES", "NO"]:
                     decision = "UNKNOWN"

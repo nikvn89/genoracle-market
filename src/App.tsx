@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import './index.css';
 import { createClient, createAccount } from 'genlayer-js';
 
@@ -15,8 +15,8 @@ function App() {
   
   // Wallet Switcher State
   const [activeWallet, setActiveWallet] = useState<'A' | 'B'>('A');
-  const accountA = React.useMemo(() => createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28'), []);
-  const accountB = React.useMemo(() => createAccount('0x8888888888888888888888888888888888888888888888888888888888888888'), []);
+  const accountA = useMemo(() => createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28'), []);
+  const accountB = useMemo(() => createAccount('0x8888888888888888888888888888888888888888888888888888888888888888'), []);
   const account = activeWallet === 'A' ? accountA : accountB;
   
   // Market States

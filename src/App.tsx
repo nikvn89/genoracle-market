@@ -404,13 +404,19 @@ function App() {
               <div key={id} className="market-card success glow">
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>
                 <h2 style={{color: '#00ff88', textAlign: 'center', margin: '15px 0'}}>{markets[id].status}</h2>
-                {((markets[id].yes_positions?.[account.address] > 0) || 
-                  (markets[id].no_positions?.[account.address] > 0) || 
-                  (markets[id].yes_positions?.[account.address.toLowerCase()] > 0) || 
-                  (markets[id].no_positions?.[account.address.toLowerCase()] > 0)) && (
+                {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
                   <button className="btn-primary" style={{width: '100%', background: '#ff007f'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
                     {loadingStates[`claim_${id}`] ? 'Claiming...' : '💰 Claim Payout / Refund'}
                   </button>
+                )}
+                
+                {((markets[id].status === 'RESOLVED_YES' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0))) && (
+                  <div style={{color: '#ff4444', textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: 'bold'}}>
+                    ❌ Your prediction was incorrect. No payout.
+                  </div>
                 )}
               </div>
             ))}

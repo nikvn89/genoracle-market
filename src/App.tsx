@@ -229,6 +229,7 @@ function App() {
   };
 
   const [walletConnected, setWalletConnected] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   
   const pendingMarkets = marketIds.filter(id => markets[id] && (markets[id].status === 'OPEN' || markets[id].status === 'LOCKED') && !loadingStates[`res_${id}`]);
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
@@ -236,12 +237,19 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="top-nav" style={{display: 'flex', justifyContent: 'flex-end', padding: '15px 30px', gap: '15px'}}>
-        {!walletConnected ? (
-          <button className="btn-primary" onClick={() => setWalletConnected(true)}>
-            🔗 Connect GenLayer Wallet
-          </button>
-        ) : (
+      <div className="top-nav" style={{display: 'flex', justifyContent: 'space-between', padding: '15px 30px', gap: '15px'}}>
+        <div style={{display: 'flex', alignItems: 'center'}}>
+          <label style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: demoMode ? '#ff007f' : '#666', fontWeight: 'bold'}}>
+            <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} style={{accentColor: '#ff007f'}} />
+            🛠️ Hackathon Demo Mode (Bypass Time-Locks)
+          </label>
+        </div>
+        <div style={{display: 'flex', gap: '15px'}}>
+          {!walletConnected ? (
+            <button className="btn-primary" onClick={() => setWalletConnected(true)}>
+              🔗 Connect GenLayer Wallet
+            </button>
+          ) : (
           <>
             <button className="btn-secondary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={(loadingStates.faucet || balance >= 1000) ? {background: 'rgba(255,255,255,0.05)', color: '#888', borderColor: '#444'} : {}}>
               {loadingStates.faucet ? `⏳ Awaiting Consensus... (${faucetElapsed}s)` : (balance >= 1000 ? '✅ Faucet Limit Reached' : '🏦 Request 1000 G-USD')}
@@ -362,7 +370,7 @@ function App() {
                   )}
                   
                   {market.status === 'OPEN' ? (
-                    new Date() > new Date(market.deadline) ? (
+                    (new Date() > new Date(market.deadline) && !demoMode) ? (
                       <div className="result-box glow" style={{marginTop: '10px', background: 'rgba(255,165,0,0.1)', color: '#ffa500', borderColor: '#ffa500'}}>
                         🔒 Betting Closed (Awaiting AI Resolution)
                       </div>
@@ -398,13 +406,13 @@ function App() {
                 <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
                 <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
                 
-                {new Date() < new Date(markets[id].deadline) ? (
+                {(new Date() < new Date(markets[id].deadline) && !demoMode) ? (
                   <button type="button" className="btn-resolve" disabled style={{background: 'rgba(255,255,255,0.1)', color: '#888', cursor: 'not-allowed', borderColor: '#555'}}>
                     ⏳ Waiting for Deadline...
                   </button>
                 ) : (
-                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
-                    🤖 Trigger GenLayer AI
+                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)} style={demoMode ? {boxShadow: '0 0 15px #ff007f', border: '1px solid #ff007f'} : {}}>
+                    {demoMode ? '⚠️ FORCE Trigger AI (Demo)' : '🤖 Trigger GenLayer AI'}
                   </button>
                 )}
               </div>

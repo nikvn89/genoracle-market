@@ -273,8 +273,8 @@ function App() {
                 <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required />
               </div>
               <div className="input-group">
-                <label>Source of Truth (News URL)</label>
-                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} required />
+                <label>Source of Truth (News URL) <span style={{color: '#888', fontSize: '12px'}}>- Wikipedia recommended</span></label>
+                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} placeholder="https://en.wikipedia.org/wiki/..." required />
               </div>
               <div className="input-group">
                 <label>Objective Deadline (YYYY-MM-DD)</label>

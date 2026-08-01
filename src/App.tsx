@@ -229,7 +229,6 @@ function App() {
   };
 
   const [walletConnected, setWalletConnected] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
   
   const pendingMarkets = marketIds.filter(id => markets[id] && (markets[id].status === 'OPEN' || markets[id].status === 'LOCKED') && !loadingStates[`res_${id}`]);
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
@@ -237,13 +236,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="top-nav" style={{display: 'flex', justifyContent: 'space-between', padding: '15px 30px', gap: '15px'}}>
-        <div style={{display: 'flex', alignItems: 'center'}}>
-          <label style={{cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: demoMode ? '#ff007f' : '#666', fontWeight: 'bold'}}>
-            <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} style={{accentColor: '#ff007f'}} />
-            🛠️ Hackathon Demo Mode (Bypass Time-Locks)
-          </label>
-        </div>
+      <div className="top-nav" style={{display: 'flex', justifyContent: 'flex-end', padding: '15px 30px', gap: '15px'}}>
         <div style={{display: 'flex', gap: '15px'}}>
           {!walletConnected ? (
             <button className="btn-primary" onClick={() => setWalletConnected(true)}>
@@ -251,7 +244,7 @@ function App() {
             </button>
           ) : (
           <>
-            <button className="btn-secondary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={(loadingStates.faucet || balance >= 1000) ? {background: 'rgba(255,255,255,0.05)', color: '#888', borderColor: '#444'} : {}}>
+            <button className="btn-primary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={(loadingStates.faucet || balance >= 1000) ? {background: 'rgba(0,0,0,0.5)', color: '#555', border: '1px solid #333', boxShadow: 'none'} : {background: 'linear-gradient(45deg, #00d2ff, #3a7bd5)', border: 'none', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.3)'}}>
               {loadingStates.faucet ? `⏳ Awaiting Consensus... (${faucetElapsed}s)` : (balance >= 1000 ? '✅ Faucet Limit Reached' : '🏦 Request 1000 G-USD')}
             </button>
             <div style={{background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '8px 15px', borderRadius: '20px', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -401,15 +394,9 @@ function App() {
                 <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
                 <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
                 
-                {(new Date() < new Date(markets[id].deadline) && !demoMode) ? (
-                  <button type="button" className="btn-resolve" disabled style={{background: 'rgba(255,255,255,0.1)', color: '#888', cursor: 'not-allowed', borderColor: '#555'}}>
-                    ⏳ Waiting for Deadline...
-                  </button>
-                ) : (
-                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)} style={demoMode ? {boxShadow: '0 0 15px #ff007f', border: '1px solid #ff007f'} : {}}>
-                    {demoMode ? '⚠️ FORCE Trigger AI (Demo)' : '🤖 Trigger GenLayer AI'}
-                  </button>
-                )}
+                <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
+                  🤖 Trigger GenLayer AI
+                </button>
               </div>
             ))}
           </div>
@@ -432,17 +419,17 @@ function App() {
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>
                 <h2 style={{color: '#00ff88', textAlign: 'center', margin: '15px 0'}}>{markets[id].status}</h2>
                 {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
                   <button className="btn-primary" style={{width: '100%', background: '#ff007f'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
-                    {loadingStates[`claim_${id}`] ? 'Claiming...' : '💰 Claim Payout / Refund'}
+                    {loadingStates[`claim_${id}`] ? 'Claiming...' : '💰 Claim Payout'}
                   </button>
                 )}
                 
                 {((markets[id].status === 'RESOLVED_YES' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0))) && (
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
                   <div style={{color: '#ff4444', textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: 'bold'}}>
-                    ❌ Your prediction was incorrect. No payout.
+                    ❌ Prediction failed or market void. No payout.
                   </div>
                 )}
               </div>

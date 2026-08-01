@@ -102,19 +102,24 @@ function App() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!marketQuestion || !marketUrl || !marketDeadline) return;
+    if (!marketQuestion || !marketDeadline) return;
     
     setCreateLoading(true);
     setCreateMsg('Creating market on GenLayer...');
     
     const newMarketId = Date.now().toString();
     
+    // Auto-generate DuckDuckGo Search URL if left blank
+    const finalUrl = marketUrl.trim() 
+      ? marketUrl 
+      : `https://html.duckduckgo.com/html/?q=${encodeURIComponent(marketQuestion)}`;
+    
     try {
       await client.writeContract({
         account,
         address: CONTRACT_ADDRESS,
         functionName: 'create_market',
-        args: [newMarketId, marketQuestion, marketUrl, marketDeadline]
+        args: [newMarketId, marketQuestion, finalUrl, marketDeadline]
       });
       
       const newIds = [newMarketId, ...marketIds];
@@ -276,8 +281,8 @@ function App() {
                 <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required />
               </div>
               <div className="input-group">
-                <label>Source of Truth (News URL) <span style={{color: '#888', fontSize: '12px'}}>- Wikipedia recommended</span></label>
-                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} placeholder="https://en.wikipedia.org/wiki/..." required />
+                <label>Source of Truth (News URL) <span style={{color: '#00ff88', fontSize: '12px'}}>- OPTIONAL (Leave blank for Auto Web Search)</span></label>
+                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} placeholder="Leave blank to let AI search the web..." />
               </div>
               <div className="input-group">
                 <label>Objective Deadline (YYYY-MM-DD)</label>

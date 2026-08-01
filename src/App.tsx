@@ -238,8 +238,8 @@ function App() {
           </button>
         ) : (
           <>
-            <button className="btn-secondary" onClick={handleFaucet} disabled={loadingStates.faucet} style={loadingStates.faucet ? {background: 'rgba(255,255,255,0.05)', color: '#888', borderColor: '#444'} : {}}>
-              {loadingStates.faucet ? `⏳ Awaiting Consensus... (${faucetElapsed}s)` : '🏦 Request 1000 G-USD'}
+            <button className="btn-secondary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={(loadingStates.faucet || balance >= 1000) ? {background: 'rgba(255,255,255,0.05)', color: '#888', borderColor: '#444'} : {}}>
+              {loadingStates.faucet ? `⏳ Awaiting Consensus... (${faucetElapsed}s)` : (balance >= 1000 ? '✅ Faucet Limit Reached' : '🏦 Request 1000 G-USD')}
             </button>
             <div style={{background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '8px 15px', borderRadius: '20px', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '8px'}}>
               <div style={{width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%'}}></div>

@@ -260,6 +260,7 @@ function App() {
             </div>
           </>
         )}
+        </div>
       </div>
 
       <div className="cyber-header" style={{paddingTop: '0'}}>

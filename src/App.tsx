@@ -9,7 +9,7 @@ const client = createClient({
 const account = createAccount(import.meta.env.VITE_PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');
 
 // V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x21F05Cc32f5F9513492AE059835a5D0253b948F1'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x5AeFD2B7F70D7951Fb76A37fA4660311cfD747a0'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

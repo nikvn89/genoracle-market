@@ -157,7 +157,7 @@ function App() {
         account,
         address: CONTRACT_ADDRESS,
         functionName: 'place_bet',
-        args: [id, account.address, isYes, amount]
+        args: [id, account.address.toLowerCase(), isYes, amount]
       });
       await new Promise(r => setTimeout(r, 4000));
       await fetchAllMarkets();
@@ -210,7 +210,7 @@ function App() {
     setLoadingStates(prev => ({...prev, [`claim_${id}`]: true}));
     try {
       await client.writeContract({
-        account, address: CONTRACT_ADDRESS, functionName: 'claim_winnings', args: [id, account.address]
+        account, address: CONTRACT_ADDRESS, functionName: 'claim_winnings', args: [id, account.address.toLowerCase()]
       });
       await new Promise(r => setTimeout(r, 4000));
       await fetchAllMarkets();

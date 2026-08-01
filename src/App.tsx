@@ -48,9 +48,14 @@ function App() {
       });
       const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
       if (data && data.balances) {
-        setBalance(data.balances[account.address] || 0);
+        // Smart contract stores balances in lowercase, so we need to match it
+        const lowerAddress = account.address.toLowerCase();
+        const newBalance = data.balances[lowerAddress] || data.balances[account.address] || 0;
+        setBalance(newBalance);
+        return newBalance;
       }
     } catch(e) {}
+    return balance;
   };
 
   const handleFaucet = async () => {
@@ -62,12 +67,12 @@ function App() {
         functionName: 'faucet',
         args: [account.address]
       });
-      // Poll until balance increases (up to 30s)
+      // Poll until balance increases (up to 60s for GenVM BFT Consensus)
       const prevBalance = balance;
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        await fetchBalance();
-        if (balance > prevBalance) break;
+        const updatedBalance = await fetchBalance();
+        if (updatedBalance > prevBalance) break;
       }
     } catch(e: any) {
       alert('Faucet error: ' + e.message);

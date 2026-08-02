@@ -425,7 +425,7 @@ function App() {
                   {market.status === 'OPEN' ? (
                       <form>
                         <div className="input-group" style={{marginTop: '10px'}}>
-                          <input type="number" value={betAmounts[id] || 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: Number(e.target.value)}))} min="1" />
+                          <input type="number" value={betAmounts[id] !== undefined ? betAmounts[id] : 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: e.target.value === '' ? '' : Number(e.target.value)}))} min="1" />
                         </div>
                         <div className="bet-buttons">
                           <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BET YES</button>

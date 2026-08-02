@@ -165,7 +165,7 @@ function App() {
     setLoadingStates(prev => ({...prev, [`bet_${id}`]: true}));
     setMessages(prev => ({...prev, [`bet_${id}`]: `Placing ${isYes ? 'YES' : 'NO'} bet...`}));
     
-    const amount = betAmounts[id] || 100;
+    const amount = Number(betAmounts[id]) || 100;
     
     try {
       const prevMarket = markets[id];
@@ -425,7 +425,7 @@ function App() {
                   {market.status === 'OPEN' ? (
                       <form>
                         <div className="input-group" style={{marginTop: '10px'}}>
-                          <input type="number" value={betAmounts[id] !== undefined ? betAmounts[id] : 100} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: e.target.value === '' ? '' : Number(e.target.value)}))} min="1" />
+                          <input type="text" value={betAmounts[id] !== undefined ? betAmounts[id] : "100"} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: e.target.value.replace(/[^0-9]/g, '')}))} placeholder="Amount" />
                         </div>
                         <div className="bet-buttons">
                           <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BET YES</button>

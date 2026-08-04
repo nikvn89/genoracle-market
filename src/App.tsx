@@ -8,7 +8,7 @@ const client = createClient({
 });
 
 // V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x5AeFD2B7F70D7951Fb76A37fA4660311cfD747a0'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x771a9E7e00F8E7A570A4E3DcBd4Dd71fa3eAcB82'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -203,6 +203,21 @@ function App() {
       setMessages(prev => ({...prev, [`bet_${id}`]: 'Error: ' + err.message}));
     }
     setLoadingStates(prev => ({...prev, [`bet_${id}`]: false}));
+  };
+
+  const handleCloseBetting = async (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    setLoadingStates(prev => ({...prev, [`close_${id}`]: true}));
+    try {
+      await client.writeContract({
+        account, address: CONTRACT_ADDRESS, functionName: 'close_betting', args: [id]
+      });
+      await new Promise(r => setTimeout(r, 4000));
+      await fetchAllMarkets();
+    } catch(err: any) {
+      alert("Error closing betting: " + err.message);
+    }
+    setLoadingStates(prev => ({...prev, [`close_${id}`]: false}));
   };
 
   const handleResolve = async (e: React.FormEvent, id: string) => {
@@ -453,9 +468,15 @@ function App() {
                 <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
                 <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
                 
-                <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
-                  🤖 Trigger GenLayer AI
-                </button>
+                {markets[id].status === 'OPEN' ? (
+                  <button type="button" className="btn-resolve" onClick={(e) => handleCloseBetting(e, id)} disabled={loadingStates[`close_${id}`]} style={{background: '#ffaa00'}}>
+                    {loadingStates[`close_${id}`] ? 'Closing...' : '🔒 Close Betting'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
+                    🤖 Trigger GenLayer AI
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -478,17 +499,17 @@ function App() {
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>
                 <h2 style={{color: '#00ff88', textAlign: 'center', margin: '15px 0'}}>{markets[id].status}</h2>
                 {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
-                  <button className="btn-primary" style={{width: '100%', background: '#ff007f'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
-                    {loadingStates[`claim_${id}`] ? 'Claiming...' : '💰 Claim Payout'}
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
+                  <button className="btn-primary" style={{width: '100%', background: markets[id].status === 'FAILED' ? '#ffaa00' : '#ff007f'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
+                    {loadingStates[`claim_${id}`] ? 'Claiming...' : (markets[id].status === 'FAILED' ? '🔁 Claim Refund' : '💰 Claim Payout')}
                   </button>
                 )}
                 
                 {((markets[id].status === 'RESOLVED_YES' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0))) && (
                   <div style={{color: '#ff4444', textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: 'bold'}}>
-                    ❌ Prediction failed or market void. No payout.
+                    ❌ Prediction failed. No payout.
                   </div>
                 )}
               </div>

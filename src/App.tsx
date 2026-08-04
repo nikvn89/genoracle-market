@@ -274,7 +274,7 @@ function App() {
 
   const [walletConnected, setWalletConnected] = useState(false);
   
-  const pendingMarkets = marketIds.filter(id => markets[id] && (markets[id].status === 'OPEN' || markets[id].status === 'LOCKED') && !loadingStates[`res_${id}`]);
+  const pendingMarkets = marketIds.filter(id => markets[id] && (markets[id].status === 'OPEN' || markets[id].status === 'CLOSED_FOR_BETTING') && !loadingStates[`res_${id}`]);
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
   const resolvedMarkets = marketIds.filter(id => markets[id] && (markets[id].status.startsWith('RESOLVED') || markets[id].status === 'FAILED'));
 
@@ -448,7 +448,9 @@ function App() {
                         </div>
                       </form>
                   ) : (
-                    <div className="result-box glow" style={{marginTop: '10px'}}>Resolved: {market.status}</div>
+                    <div className="result-box glow" style={{marginTop: '10px'}}>
+                      {market.status === 'CLOSED_FOR_BETTING' ? '🔒 Betting Closed. Awaiting AI Resolution.' : `Resolved: ${market.status}`}
+                    </div>
                   )}
                   {messages[`bet_${id}`] && <div className="result-box">{messages[`bet_${id}`]}</div>}
                 </div>

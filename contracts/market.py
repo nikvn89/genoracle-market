@@ -176,12 +176,50 @@ class PredictionMarketContract(gl.Contract):
                 parsed = json.loads(clean_resp.strip())
                 decision = str(parsed.get("decision", "UNKNOWN")).strip().upper()
                 if decision not in ["YES", "NO"]: decision = "UNKNOWN"
-                return json.dumps({"decision": decision})
+                return json.dumps({"decision": decision, "research": research_report})
             except Exception:
-                return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing"})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing", "research": ""})
 
         def validator_fn(leader_res) -> bool:
-            return True
+            try:
+                leader_str = ""
+                if type(leader_res) is str: leader_str = leader_res
+                elif hasattr(leader_res, "value"): leader_str = leader_res.value
+                elif hasattr(leader_res, "calldata"): leader_str = leader_res.calldata
+                else: return False
+                    
+                l_data = json.loads(leader_str)
+                leader_decision = l_data.get("decision")
+                research = l_data.get("research", "")
+                
+                if not research:
+                    return False
+                    
+                judge_prompt = f"""
+                You are the Chief Judge of an Oracle Protocol.
+                Based strictly on the following Research Report, answer the question: "{market["question"]}"
+                
+                Research Report:
+                {research}
+                
+                If the facts definitively confirm the event, output exactly: {{"decision": "YES"}}
+                If the facts definitively deny the event, output exactly: {{"decision": "NO"}}
+                If the facts are ambiguous or irrelevant, output exactly: {{"decision": "UNKNOWN"}}
+                
+                Output ONLY valid JSON.
+                """
+                ai_resp = gl.nondet.exec_prompt(judge_prompt)
+                clean_resp = ai_resp.strip()
+                if clean_resp.startswith("```json"): clean_resp = clean_resp[7:]
+                elif clean_resp.startswith("```"): clean_resp = clean_resp[3:]
+                if clean_resp.endswith("```"): clean_resp = clean_resp[:-3]
+                
+                v_data = json.loads(clean_resp.strip())
+                val_decision = str(v_data.get("decision", "UNKNOWN")).strip().upper()
+                
+                return leader_decision == val_decision
+            except Exception:
+                return False
 
         final_res = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         final_data = json.loads(final_res)

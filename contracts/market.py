@@ -159,23 +159,18 @@ class PredictionMarketContract(gl.Contract):
             Research Report:
             {research_report}
             
-            If the facts definitively confirm the event, output exactly: {{"decision": "YES"}}
-            If the facts definitively deny the event, output exactly: {{"decision": "NO"}}
-            If the facts are ambiguous or irrelevant, output exactly: {{"decision": "UNKNOWN"}}
+            If the facts definitively confirm the event, output exactly: YES
+            If the facts definitively deny the event, output exactly: NO
+            If the facts are ambiguous or irrelevant, output exactly: UNKNOWN
             
-            Output ONLY valid JSON.
+            Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
             """
             
             try:
-                ai_resp = gl.nondet.exec_prompt(judge_prompt)
-                clean_resp = ai_resp.strip()
-                if clean_resp.startswith("```json"): clean_resp = clean_resp[7:]
-                elif clean_resp.startswith("```"): clean_resp = clean_resp[3:]
-                if clean_resp.endswith("```"): clean_resp = clean_resp[:-3]
-                
-                parsed = json.loads(clean_resp.strip())
-                decision = str(parsed.get("decision", "UNKNOWN")).strip().upper()
-                if decision not in ["YES", "NO"]: decision = "UNKNOWN"
+                ai_resp = gl.nondet.exec_prompt(judge_prompt).strip().upper()
+                if "YES" in ai_resp: decision = "YES"
+                elif "NO" in ai_resp: decision = "NO"
+                else: decision = "UNKNOWN"
                 return json.dumps({"decision": decision, "research": research_report})
             except Exception:
                 return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing", "research": ""})
@@ -202,20 +197,17 @@ class PredictionMarketContract(gl.Contract):
                 Research Report:
                 {research}
                 
-                If the facts definitively confirm the event, output exactly: {{"decision": "YES"}}
-                If the facts definitively deny the event, output exactly: {{"decision": "NO"}}
-                If the facts are ambiguous or irrelevant, output exactly: {{"decision": "UNKNOWN"}}
+                If the facts definitively confirm the event, output exactly: YES
+                If the facts definitively deny the event, output exactly: NO
+                If the facts are ambiguous or irrelevant, output exactly: UNKNOWN
                 
-                Output ONLY valid JSON.
+                Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
                 """
-                ai_resp = gl.nondet.exec_prompt(judge_prompt)
-                clean_resp = ai_resp.strip()
-                if clean_resp.startswith("```json"): clean_resp = clean_resp[7:]
-                elif clean_resp.startswith("```"): clean_resp = clean_resp[3:]
-                if clean_resp.endswith("```"): clean_resp = clean_resp[:-3]
+                ai_resp = gl.nondet.exec_prompt(judge_prompt).strip().upper()
                 
-                v_data = json.loads(clean_resp.strip())
-                val_decision = str(v_data.get("decision", "UNKNOWN")).strip().upper()
+                if "YES" in ai_resp: val_decision = "YES"
+                elif "NO" in ai_resp: val_decision = "NO"
+                else: val_decision = "UNKNOWN"
                 
                 return leader_decision == val_decision
             except Exception:

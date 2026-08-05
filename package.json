@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "genlayer-js": "^1.1.8",
+    "jsdom": "^30.0.1",
+    "puppeteer": "^25.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -17,6 +19,7 @@
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
+    "playwright": "^1.62.1",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
   }

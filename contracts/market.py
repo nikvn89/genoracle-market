@@ -128,9 +128,6 @@ class PredictionMarketContract(gl.Contract):
             Output ONLY the query string, nothing else. Do not use quotes.
             """
             try:
-                import urllib.request
-                import urllib.error
-                import re
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 
                 if domain:
@@ -138,14 +135,11 @@ class PredictionMarketContract(gl.Contract):
                 else:
                     search_url = f"https://html.duckduckgo.com/html/?q={query}"
                     
-                req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    raw_html = response.read().decode('utf-8')
-                    # Strip all HTML tags
-                    clean_text = re.sub(r'<[^>]+>', ' ', raw_html)
-                    # Compress whitespace
-                    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-                    search_text = clean_text[:4000]
+                # Use GenLayer's built-in web.render to bypass sandbox restrictions and auto-strip HTML
+                search_text = gl.nondet.web.render(search_url, mode="text")
+                if len(search_text) > 4000:
+                    search_text = search_text[:4000]
+                    
             except Exception as e:
                 return json.dumps({"decision": "UNKNOWN", "reason": f"Web Search failed: {str(e)}"})
                 

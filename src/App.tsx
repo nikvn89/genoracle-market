@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = '0x399e91E4cae2c3Dc55566f4CDF0d5de6221BF58c'; // V13 (Super Search & AI Reasoning UI)
+const CONTRACT_ADDRESS = '0x6eea6BC968f646a08eC8ffeeFd9E395F4912154A'; // V14 (Sandbox Fix)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

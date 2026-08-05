@@ -408,57 +408,6 @@ function App() {
             </form>
             {createMsg && <div className="result-box success">{createMsg}</div>}
 
-            <div style={{marginTop: '25px'}}>
-              <h3 style={{fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '10px'}}>Quick Test Examples (Click to fill)</h3>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setMarketQuestion("Will it rain in London tomorrow?");
-                    setMarketDeadline("2026-12-31");
-                  }}
-                  style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 210, 255, 0.05)', border: '1px dashed var(--primary-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
-                >
-                  🌧️ Weather: Rain in London? (May block AI)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setMarketQuestion("Is Bitcoin price above $100k?");
-                    setMarketDomain("coinmarketcap.com");
-                    setMarketDeadline("2026-12-31");
-                  }}
-                  style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 0, 122, 0.05)', border: '1px dashed var(--accent-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
-                >
-                  📈 Crypto: BTC {">"} $100k? (Domain: coinmarketcap.com)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setMarketQuestion("Is the Earth flat?");
-                    setMarketDomain("wikipedia.org");
-                    setMarketDeadline("2026-12-31");
-                  }}
-                  style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', border: '1px dashed var(--success)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
-                >
-                  🌍 Science: Is Earth flat? (Domain: wikipedia.org)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setMarketQuestion("Will 1+1 equal 2 in math?");
-                    setMarketDomain("wikipedia.org");
-                    setMarketDeadline("2026-12-31");
-                  }}
-                  style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 204, 0, 0.05)', border: '2px dashed #ffcc00', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
-                >
-                  <strong style={{color: '#ffcc00'}}>🧮 Pari-Mutuel End-to-End Test: 1+1=2 (Guaranteed YES)</strong>
-                  <div style={{color: 'var(--text-muted)', fontSize: '11px', marginTop: '5px', lineHeight: '1.4'}}>
-                    Test flow for Judge: 1. Create -> 2. Wallet A bets YES -> 3. Wallet B bets NO -> 4. Close & Resolve (AI returns YES) -> 5. Claim (Wallet A wins full pool, B loses).
-                  </div>
-                </button>
-              </div>
-            </div>
 
             <div style={{marginTop: '30px'}}>
               <h2 style={{color: 'var(--warning)', fontSize: '1.4rem'}}>🏆 Top Traders</h2>

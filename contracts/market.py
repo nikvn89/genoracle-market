@@ -262,3 +262,7 @@ class PredictionMarketContract(gl.Contract):
         if market_id in markets:
             return json.dumps(markets[market_id])
         return "{}"
+
+    @gl.public.view
+    def get_all_markets(self) -> str:
+        return self.markets_str

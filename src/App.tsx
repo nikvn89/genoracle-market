@@ -16,9 +16,7 @@ function App() {
   const account = activeWallet === 'A' ? accountA : accountB;
   
   const [markets, setMarkets] = useState<any>({});
-  const [marketIds, setMarketIds] = useState<string[]>(() => {
-    return JSON.parse(localStorage.getItem('genOracleMarkets') || '[]');
-  });
+  const [marketIds, setMarketIds] = useState<string[]>([]);
   const [balance, setBalance] = useState<number>(0);
   const [allBalances, setAllBalances] = useState<{[key: string]: number}>({});
   
@@ -93,19 +91,20 @@ function App() {
   };
 
   const fetchAllMarkets = async () => {
-    for (const id of marketIds) {
-      try {
-        const res = await client.readContract({
-          address: CONTRACT_ADDRESS,
-          functionName: 'get_market',
-          args: [id]
-        });
-        const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
-        if (data && data.status) {
-          setMarkets((prev: any) => ({ ...prev, [id]: data }));
-        }
-      } catch(e) {}
-    }
+    try {
+      const res = await client.readContract({
+        address: CONTRACT_ADDRESS,
+        functionName: 'get_all_markets',
+        args: []
+      });
+      const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+      if (data) {
+        setMarkets(data);
+        // Sort IDs descending so newest are on top
+        const ids = Object.keys(data).sort((a, b) => Number(b) - Number(a));
+        setMarketIds(ids);
+      }
+    } catch(e) {}
     fetchBalance();
   };
 
@@ -130,7 +129,6 @@ function App() {
       
       const newIds = [newMarketId, ...marketIds];
       setMarketIds(newIds);
-      localStorage.setItem('genOracleMarkets', JSON.stringify(newIds));
       
       setCreateMsg('Waiting for network consensus...');
       for (let i = 0; i < 8; i++) {
@@ -288,11 +286,8 @@ function App() {
   };
 
   const handleClearHistory = () => {
-    if (window.confirm("Are you sure you want to clear all local markets history? This will not affect the blockchain.")) {
-      setMarketIds([]);
-      setMarkets({});
-      localStorage.removeItem('genOracleMarkets');
-    }
+    // History is now on-chain, so we don't clear it locally anymore.
+    alert("History is fully synchronized with the blockchain. You cannot clear it locally anymore!");
   };
 
   const [walletConnected, setWalletConnected] = useState(false);
@@ -457,7 +452,6 @@ function App() {
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px'}}>
               <h2 style={{borderBottom: 'none', padding: 0, margin: 0}}><span style={{color: 'var(--accent-color)'}}>🎲</span> Order Book</h2>
               <div style={{display: 'flex', gap: '10px'}}>
-                <button className="btn-primary" onClick={handleClearHistory} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--danger)', border: '1px solid var(--danger)'}}>🗑️ Clear History</button>
                 <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
               </div>
             </div>

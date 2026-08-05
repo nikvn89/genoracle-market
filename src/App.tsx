@@ -443,6 +443,20 @@ function App() {
                 >
                   🌍 Science: Is Earth flat? (Domain: wikipedia.org)
                 </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setMarketQuestion("Will 1+1 equal 2 in math?");
+                    setMarketDomain("wikipedia.org");
+                    setMarketDeadline("2026-12-31");
+                  }}
+                  style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 204, 0, 0.05)', border: '2px dashed #ffcc00', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
+                >
+                  <strong style={{color: '#ffcc00'}}>🧮 Pari-Mutuel End-to-End Test: 1+1=2 (Guaranteed YES)</strong>
+                  <div style={{color: 'var(--text-muted)', fontSize: '11px', marginTop: '5px', lineHeight: '1.4'}}>
+                    Test flow for Judge: 1. Create -> 2. Wallet A bets YES -> 3. Wallet B bets NO -> 4. Close & Resolve (AI returns YES) -> 5. Claim (Wallet A wins full pool, B loses).
+                  </div>
+                </button>
               </div>
             </div>
 

@@ -4,30 +4,18 @@ import { studionet } from 'genlayer-js/chains';
 const client = createClient({ chain: studionet });
 
 async function test() {
-  const address = '0x8c3AdF53782552d769D9149C3DF094544431a994';
+  const address = '0x306d65DE960BBe584fC79D0745091CeDcD2Fe190';
   
-  console.log("Testing DDG...");
   try {
-    const res1 = await client.readContract({
-      address,
-      functionName: 'test_ddg',
-      args: ['bitcoin']
+    const res = await client.readContract({
+      address: address,
+      functionName: 'get_time',
+      args: []
     });
-    console.log("DDG Result:", res1);
-  } catch(e) {
-    console.error("DDG Error:", e.message);
-  }
-
-  console.log("\nTesting Bing...");
-  try {
-    const res2 = await client.readContract({
-      address,
-      functionName: 'test_bing',
-      args: ['bitcoin']
-    });
-    console.log("Bing Result:", res2);
-  } catch(e) {
-    console.error("Bing Error:", e.message);
+    console.log("Result:", res);
+  } catch (e) {
+    console.log("Error:", e);
   }
 }
+
 test();

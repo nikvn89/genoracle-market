@@ -6,7 +6,7 @@ const client = createClient({ chain: studionet });
 const account = createAccount(); 
 
 async function deploy() {
-  const code = fs.readFileSync('./contracts/market.py', 'utf-8');
+  const code = fs.readFileSync('./contracts/test_time.py', 'utf-8');
   try {
     const hash = await client.deployContract({
       account,

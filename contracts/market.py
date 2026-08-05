@@ -42,9 +42,6 @@ class PredictionMarketContract(gl.Contract):
 
     @gl.public.write
     def create_market(self, market_id: str, question: str, authoritative_domain: str, deadline: str) -> None:
-        if not authoritative_domain or "." not in authoritative_domain:
-            raise gl.vm.UserError("Valid Authoritative Domain is required (e.g. bbc.com)")
-            
         markets = json.loads(self.markets_str)
         if market_id not in markets:
             markets[market_id] = {
@@ -123,16 +120,22 @@ class PredictionMarketContract(gl.Contract):
 
         def leader_fn() -> str:
             # 1. Agent 1: The Search Strategist
+            domain_instruction = f'to search on the domain "{domain}"' if domain else "to search the open web"
             query_prompt = f"""
             You are an expert search strategist. The user wants to find the answer to this question: "{market["question"]}"
-            Generate a concise 2 to 4 word search query (keywords only) to search on the domain "{domain}".
+            Generate a concise 2 to 4 word search query (keywords only) {domain_instruction}.
             Output ONLY the query string, nothing else. Example: US election winner 2024
             """
             try:
                 import urllib.request
                 import urllib.error
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
-                search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
+                
+                if domain:
+                    search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
+                else:
+                    search_url = f"https://html.duckduckgo.com/html/?q={query}"
+                    
                 req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
                 with urllib.request.urlopen(req, timeout=10) as response:
                     search_text = response.read().decode('utf-8')[:4000]

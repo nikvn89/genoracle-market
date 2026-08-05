@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = '0x272d9970488b83752d6a114c05b0f25Fb148AfE7'; // V9 (Fix Web Search Consensus)
+const CONTRACT_ADDRESS = '0x4177C2ACa2A5A9c416C82A34d47e28e1CDB3b6fb'; // V10 (Open Web Search)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -388,8 +388,9 @@ function App() {
                 <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required placeholder="e.g. Did SpaceX launch Starship today?" />
               </div>
               <div className="input-group">
-                <label>Authoritative Domain <span style={{color: 'var(--danger)', fontSize: '12px'}}>- REQUIRED</span></label>
-                <select value={marketDomain} onChange={(e) => setMarketDomain(e.target.value)} required style={{padding: '12px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', fontSize: '1rem', width: '100%'}}>
+                <label>Authoritative Domain <span style={{color: 'var(--primary-color)', fontSize: '12px'}}>- OPTIONAL</span></label>
+                <select value={marketDomain} onChange={(e) => setMarketDomain(e.target.value)} style={{padding: '12px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', fontSize: '1rem', width: '100%'}}>
+                  <option value="">Open Web Search (AI Auto-Detect)</option>
                   <option value="wikipedia.org">wikipedia.org (General Knowledge)</option>
                   <option value="bbc.com">bbc.com (Global News)</option>
                   <option value="reuters.com">reuters.com (Politics & Economics)</option>

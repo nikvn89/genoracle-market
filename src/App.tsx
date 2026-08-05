@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = '0x2E5b3832320ABC7DbFD0D8b787f039CA46c0942D'; // V15 (Anti-Timeout)
+const CONTRACT_ADDRESS = '0xad5CF450b7590a8625227923B86e18321d7251e5'; // V16 (Bing Search)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

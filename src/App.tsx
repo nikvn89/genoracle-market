@@ -18,7 +18,12 @@ function App() {
   const [markets, setMarkets] = useState<any>({});
   const [marketIds, setMarketIds] = useState<string[]>([]);
   const [hiddenMarkets, setHiddenMarkets] = useState<string[]>(() => {
-    return JSON.parse(localStorage.getItem('genOracleHidden') || '[]');
+    try {
+      const val = JSON.parse(localStorage.getItem('genOracleHidden') || '[]');
+      return Array.isArray(val) ? val : [];
+    } catch (e) {
+      return [];
+    }
   });
   
   const [createLoading, setCreateLoading] = useState(false);

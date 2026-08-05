@@ -131,9 +131,9 @@ class PredictionMarketContract(gl.Contract):
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 
                 if domain:
-                    search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
+                    search_url = f"https://lite.duckduckgo.com/lite/?q=site:{domain}+{query}"
                 else:
-                    search_url = f"https://html.duckduckgo.com/html/?q={query}"
+                    search_url = f"https://lite.duckduckgo.com/lite/?q={query}"
                     
                 # Use GenLayer's built-in web.render to bypass sandbox restrictions and auto-strip HTML
                 search_text = gl.nondet.web.render(search_url, mode="text")

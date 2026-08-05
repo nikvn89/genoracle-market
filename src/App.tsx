@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0xaf2E192bdE68B86bcD68D97dDa956Bd7bDB3b89e"; // V17 (Yahoo Search + Unknown Enforcement)
+const CONTRACT_ADDRESS = "0x6b391115D9D05EEb634363A36f0EDaE6D1bB6dD9"; // V18 (AI Time-Lock)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

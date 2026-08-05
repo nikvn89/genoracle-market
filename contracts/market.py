@@ -168,15 +168,17 @@ class PredictionMarketContract(gl.Contract):
             
             If the facts definitively confirm the event, output exactly: YES
             If the facts definitively deny the event, output exactly: NO
-            If the facts are ambiguous, the event has not happened yet (future), or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
+            If the event has not happened yet (in the future) or is currently ongoing with no final result, output exactly: TOO_EARLY
+            If the facts are ambiguous or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
             
-            Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
+            Output ONLY a single word: YES, NO, TOO_EARLY, or UNKNOWN. Do not explain.
             """
             
             try:
                 ai_resp = gl.nondet.exec_prompt(judge_prompt).strip().upper()
                 if "YES" in ai_resp: decision = "YES"
                 elif "NO" in ai_resp: decision = "NO"
+                elif "TOO_EARLY" in ai_resp: decision = "TOO_EARLY"
                 else: decision = "UNKNOWN"
                 return json.dumps({"decision": decision, "research": research_report})
             except Exception:
@@ -207,14 +209,16 @@ class PredictionMarketContract(gl.Contract):
                 
                 If the facts definitively confirm the event, output exactly: YES
                 If the facts definitively deny the event, output exactly: NO
-                If the facts are ambiguous, the event has not happened yet (future), or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
+                If the event has not happened yet (in the future) or is currently ongoing with no final result, output exactly: TOO_EARLY
+                If the facts are ambiguous or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
                 
-                Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
+                Output ONLY a single word: YES, NO, TOO_EARLY, or UNKNOWN. Do not explain.
                 """
                 ai_resp = gl.nondet.exec_prompt(judge_prompt).strip().upper()
                 
                 if "YES" in ai_resp: val_decision = "YES"
                 elif "NO" in ai_resp: val_decision = "NO"
+                elif "TOO_EARLY" in ai_resp: val_decision = "TOO_EARLY"
                 else: val_decision = "UNKNOWN"
                 
                 return leader_decision == val_decision
@@ -230,6 +234,8 @@ class PredictionMarketContract(gl.Contract):
             market["status"] = "RESOLVED_YES"
         elif decision == "NO":
             market["status"] = "RESOLVED_NO"
+        elif decision == "TOO_EARLY":
+            raise gl.vm.UserError("AI Oracle: The event deadline has not passed yet. Money remains locked.")
         else:
             market["status"] = "FAILED"
             

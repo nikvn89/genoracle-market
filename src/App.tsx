@@ -325,7 +325,7 @@ function App() {
       </div>
 
       <div className="cyber-header">
-        <h1>GEN<span className="highlight">ORACLE</span> V3</h1>
+        <h1>GEN<span className="highlight">ORACLE</span></h1>
         <p>Next-Gen Prediction Market Powered by Multi-Agent AI Tribunal</p>
         
         <div style={{display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '20px'}}>

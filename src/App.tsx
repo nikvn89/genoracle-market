@@ -63,7 +63,7 @@ function App() {
         functionName: 'get_state',
         args: []
       });
-      const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+      const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
       if (data && data.balances) {
         setAllBalances(data.balances);
         const lowerAddress = account.address.toLowerCase();
@@ -103,7 +103,7 @@ function App() {
         functionName: 'get_all_markets',
         args: []
       });
-      const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+      const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
       if (data) {
         setMarkets(data);
         // Sort IDs descending so newest are on top, exclude hidden
@@ -147,7 +147,7 @@ function App() {
             functionName: 'get_market',
             args: [newMarketId]
           });
-          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
           if (data && data.status) {
             setMarkets((prev: any) => ({ ...prev, [newMarketId]: data }));
             break;
@@ -192,7 +192,7 @@ function App() {
             functionName: 'get_market',
             args: [id]
           });
-          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
           const currentPool = isYes ? data.yes_pool : data.no_pool;
           if (currentPool > prevPool) {
             break;
@@ -224,7 +224,7 @@ function App() {
           args: [id]
         }).catch(() => null);
         if (res) {
-          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+          const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
           if (data.status === 'CLOSED_FOR_BETTING') {
             break;
           }
@@ -262,7 +262,7 @@ function App() {
         args: [id]
       }).catch(() => null);
       if (res) {
-        const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {});
+        const data = typeof res === 'string' ? JSON.parse(res) : (res?.result ? JSON.parse(res.result) : {} : {});
         if (data.status && data.status !== 'OPEN' && data.status !== 'CLOSED_FOR_BETTING') {
           clearInterval(interval);
           setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));

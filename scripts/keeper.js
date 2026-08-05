@@ -1,6 +1,6 @@
 import { createClient, createAccount } from 'genlayer-js';
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x75d3f8D8F1360F40B1c433E3967B8368cCE829A8';
+const CONTRACT_ADDRESS = "0x774D0681b297c40753654438b7D4c7DAF139B7e1";
 const RPC_URL = process.env.RPC_URL || 'https://studio.genlayer.com/api';
 // Use Wallet A as the Keeper Bot operator
 const PRIVATE_KEY = process.env.PRIVATE_KEY || '0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28'; 

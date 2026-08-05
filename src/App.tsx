@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x63E45A62BD1aAe8e757D0Cd34026e750539de3AB'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x889Bb0f60ba0fFF865a1A37bf97F92aD4Ac21d64';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -26,12 +26,13 @@ function App() {
   const [createMsg, setCreateMsg] = useState('');
   
   const [marketQuestion, setMarketQuestion] = useState("");
-  const [marketUrl, setMarketUrl] = useState("");
+  const [marketDomain, setMarketDomain] = useState("wikipedia.org");
   const [marketDeadline, setMarketDeadline] = useState("");
   
   const [betAmounts, setBetAmounts] = useState<{[key: string]: number}>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
   const [messages, setMessages] = useState<{[key: string]: string}>({});
+  const [specificUrls, setSpecificUrls] = useState<{[key: string]: string}>({});
   
   useEffect(() => {
     fetchAllMarkets();
@@ -97,12 +98,8 @@ function App() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!marketQuestion || !marketDeadline || !marketUrl) {
-      setCreateMsg('All fields are required. You MUST provide a valid source URL.');
-      return;
-    }
-    if (!marketUrl.startsWith('http')) {
-      setCreateMsg('Error: Source URL must start with http or https');
+    if (!marketQuestion || !marketDeadline || !marketDomain) {
+      setCreateMsg('All fields are required.');
       return;
     }
     
@@ -115,7 +112,7 @@ function App() {
         account,
         address: CONTRACT_ADDRESS,
         functionName: 'create_market',
-        args: [newMarketId, marketQuestion, marketUrl.trim(), marketDeadline]
+        args: [newMarketId, marketQuestion, marketDomain, marketDeadline]
       });
       
       const newIds = [newMarketId, ...marketIds];
@@ -140,7 +137,7 @@ function App() {
       }
       setCreateMsg('✅ Market Initialized Successfully!');
       setMarketQuestion('');
-      setMarketUrl('');
+      setMarketDomain('wikipedia.org');
       setMarketDeadline('');
     } catch(err: any) {
       setCreateMsg('Error: ' + err.message);
@@ -209,11 +206,17 @@ function App() {
 
   const handleResolve = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
+    const specificUrl = specificUrls[id];
+    if (!specificUrl || !specificUrl.startsWith('http')) {
+      alert("Please provide a valid Specific Article URL (starting with http/https) from the Authoritative Domain.");
+      return;
+    }
+
     setLoadingStates(prev => ({...prev, [`res_${id}`]: true}));
     setMessages(prev => ({...prev, [`res_${id}`]: 'Executing Multi-Agent Tribunal...'}));
     
     client.writeContract({
-      account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id]
+      account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id, specificUrl]
     }).catch(console.error);
 
     let attempt = 0;
@@ -259,6 +262,14 @@ function App() {
       alert("Error: " + err.message);
     }
     setLoadingStates(prev => ({...prev, [`claim_${id}`]: false}));
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm("Are you sure you want to clear all local markets history? This will not affect the blockchain.")) {
+      setMarketIds([]);
+      setMarkets({});
+      localStorage.removeItem('genOracleMarkets');
+    }
   };
 
   const [walletConnected, setWalletConnected] = useState(false);
@@ -313,7 +324,7 @@ function App() {
         <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center', gap: '15px'}}>
           <button 
             onClick={() => setActiveWallet('A')}
-            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)', color: activeWallet === 'A' ? '#000' : '#fff', border: activeWallet === 'A' ? '1px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(0,210,255,0.5)' : 'none'}}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)', color: '#fff', border: activeWallet === 'A' ? '1px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(0,210,255,0.5)' : 'none'}}
           >
             🧑 Wallet A
           </button>
@@ -345,8 +356,14 @@ function App() {
                 <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required placeholder="e.g. Did SpaceX launch Starship today?" />
               </div>
               <div className="input-group">
-                <label>Authoritative Source URL <span style={{color: 'var(--danger)', fontSize: '12px'}}>- REQUIRED</span></label>
-                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} required placeholder="https://en.wikipedia.org/wiki/..." />
+                <label>Authoritative Domain <span style={{color: 'var(--danger)', fontSize: '12px'}}>- REQUIRED</span></label>
+                <select value={marketDomain} onChange={(e) => setMarketDomain(e.target.value)} required style={{padding: '12px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', fontSize: '1rem', width: '100%'}}>
+                  <option value="wikipedia.org">wikipedia.org (General Knowledge)</option>
+                  <option value="bbc.com">bbc.com (Global News)</option>
+                  <option value="reuters.com">reuters.com (Politics & Economics)</option>
+                  <option value="apnews.com">apnews.com (Fast News / Elections)</option>
+                  <option value="coinmarketcap.com">coinmarketcap.com (Crypto)</option>
+                </select>
               </div>
               <div className="input-group">
                 <label>Settlement Deadline (YYYY-MM-DD)</label>
@@ -376,23 +393,23 @@ function App() {
                   type="button" 
                   onClick={() => {
                     setMarketQuestion("Is Bitcoin price above $100k?");
-                    setMarketUrl("https://coinmarketcap.com/currencies/bitcoin/");
+                    setMarketDomain("coinmarketcap.com");
                     setMarketDeadline("2026-12-31");
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 0, 122, 0.05)', border: '1px dashed var(--accent-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
                 >
-                  📈 Crypto: BTC {">"} $100k? (May block AI)
+                  📈 Crypto: BTC {">"} $100k? (Domain: coinmarketcap.com)
                 </button>
                 <button 
                   type="button" 
                   onClick={() => {
                     setMarketQuestion("Is the Earth flat?");
-                    setMarketUrl("https://en.wikipedia.org/wiki/Myth_of_the_flat_Earth");
+                    setMarketDomain("wikipedia.org");
                     setMarketDeadline("2026-12-31");
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', border: '1px dashed var(--success)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
                 >
-                  🌍 Science: Is Earth flat? (100% works - Wikipedia)
+                  🌍 Science: Is Earth flat? (Domain: wikipedia.org)
                 </button>
               </div>
             </div>
@@ -417,7 +434,10 @@ function App() {
           <div className="cyber-panel">
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px'}}>
               <h2 style={{borderBottom: 'none', padding: 0, margin: 0}}><span style={{color: 'var(--accent-color)'}}>🎲</span> Order Book</h2>
-              <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
+              <div style={{display: 'flex', gap: '10px'}}>
+                <button className="btn-primary" onClick={handleClearHistory} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--danger)', border: '1px solid var(--danger)'}}>🗑️ Clear History</button>
+                <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
+              </div>
             </div>
             
             <div style={{display: 'grid', gap: '20px'}}>
@@ -434,7 +454,7 @@ function App() {
                 return (
                   <div key={id} className="market-card">
                     <h3>{market.question}</h3>
-                    <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '15px', wordBreak: 'break-all'}}>{market.source_url}</div>
+                    <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '15px', wordBreak: 'break-all'}}>Domain: {market.authoritative_domain}</div>
                     
                     {/* Visual Progress Bar */}
                     <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '5px'}}>
@@ -492,16 +512,19 @@ function App() {
             {pendingMarkets.map(id => (
               <div key={id} className="market-card">
                 <h3>{markets[id].question}</h3>
-                <div style={{fontSize: '11px', color: 'var(--text-muted)', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
+                <div style={{fontSize: '11px', color: 'var(--text-muted)', margin: '8px 0', wordBreak: 'break-all'}}>Domain: {markets[id].authoritative_domain}</div>
                 
                 {markets[id].status === 'OPEN' ? (
                   <button type="button" className="btn-primary" onClick={(e) => handleCloseBetting(e, id)} disabled={loadingStates[`close_${id}`]} style={{background: 'var(--warning)', marginTop: '15px'}}>
                     {loadingStates[`close_${id}`] ? 'Locking Contract...' : '🔒 Close Betting'}
                   </button>
                 ) : (
-                  <button type="button" className="btn-primary" onClick={(e) => handleResolve(e, id)} style={{marginTop: '15px'}}>
-                    🤖 Summon Multi-Agent Tribunal
-                  </button>
+                  <div style={{marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                    <input type="url" placeholder={`Specific URL from ${markets[id].authoritative_domain}`} value={specificUrls[id] || ''} onChange={(e) => setSpecificUrls(prev => ({...prev, [id]: e.target.value}))} style={{padding: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', fontSize: '0.85rem'}} />
+                    <button type="button" className="btn-primary" onClick={(e) => handleResolve(e, id)}>
+                      🤖 Summon Multi-Agent Tribunal
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

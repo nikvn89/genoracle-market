@@ -1,4 +1,4 @@
-# v0.3.0 - Pari-Mutuel Fixed
+# v0.4.0 - GenOracle V3 (Multi-Agent Tribunal & Precise Integer Math)
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 import json
@@ -19,7 +19,7 @@ class PredictionMarketContract(gl.Contract):
         balances = json.loads(self.balances_str)
         claimed = json.loads(self.claimed_faucet_str)
         
-        # GenVM sender validation to prevent abuse
+        # GenVM sender validation
         sender = str(gl.message.sender_address).lower()
         user_lower = user.lower()
         if sender != user_lower:
@@ -41,14 +41,17 @@ class PredictionMarketContract(gl.Contract):
         return json.dumps({"balances": balances})
 
     @gl.public.write
-    def create_market(self, market_id: str, question: str, source_url: str, deadline: str) -> None:
+    def create_market(self, market_id: str, question: str, authoritative_domain: str, deadline: str) -> None:
+        if not authoritative_domain or "." not in authoritative_domain:
+            raise gl.vm.UserError("Valid Authoritative Domain is required (e.g. bbc.com)")
+            
         markets = json.loads(self.markets_str)
         if market_id not in markets:
             markets[market_id] = {
                 "question": question,
-                "source_url": source_url,
-                "deadline": deadline, # expected YYYY-MM-DD
-                "status": "OPEN", # OPEN, CLOSED_FOR_BETTING, RESOLVED_YES, RESOLVED_NO, FAILED
+                "authoritative_domain": authoritative_domain.lower(),
+                "deadline": deadline,
+                "status": "OPEN", 
                 "yes_pool": 0,
                 "no_pool": 0,
                 "yes_positions": {},
@@ -58,10 +61,6 @@ class PredictionMarketContract(gl.Contract):
 
     @gl.public.write
     def close_betting(self, market_id: str) -> None:
-        """
-        Manually closes betting before resolution can happen. 
-        In a production environment, this would rely on gl.block.timestamp.
-        """
         markets = json.loads(self.markets_str)
         if market_id not in markets:
             raise gl.vm.UserError("Market not found")
@@ -80,42 +79,36 @@ class PredictionMarketContract(gl.Contract):
         if market_id not in markets:
             raise gl.vm.UserError("Market not found")
         if markets[market_id]["status"] != "OPEN":
-            raise gl.vm.UserError("Market is closed for betting. Wait for resolution.")
+            raise gl.vm.UserError("Market is closed for betting.")
             
-        # STRICT SENDER BINDING
         sender = str(gl.message.sender_address).lower()
         user_addr_key = user_addr.lower()
         if sender != user_addr_key:
             raise gl.vm.UserError("Sender must match the betting address")
             
         if amount <= 0:
-            raise gl.vm.UserError("Bet amount must be greater than 0")
+            raise gl.vm.UserError("Bet amount must be > 0")
             
         current_balance = balances.get(user_addr_key, 0)
-            
         if current_balance < amount:
             raise gl.vm.UserError("Insufficient G-USD balance")
             
-        # Deduct balance
         balances[user_addr_key] = current_balance - amount
-            
         market = markets[market_id]
         
         if is_yes:
             market["yes_pool"] += amount
-            user_pos = market["yes_positions"].get(user_addr_key, 0)
-            market["yes_positions"][user_addr_key] = user_pos + amount
+            market["yes_positions"][user_addr_key] = market["yes_positions"].get(user_addr_key, 0) + amount
         else:
             market["no_pool"] += amount
-            user_pos = market["no_positions"].get(user_addr_key, 0)
-            market["no_positions"][user_addr_key] = user_pos + amount
+            market["no_positions"][user_addr_key] = market["no_positions"].get(user_addr_key, 0) + amount
             
         self.markets_str = json.dumps(markets)
         self.balances_str = json.dumps(balances)
-        return "Bet placed successfully"
+        return "Bet placed"
 
     @gl.public.write
-    def resolve_market(self, market_id: str) -> None:
+    def resolve_market(self, market_id: str, specific_url: str) -> None:
         markets = json.loads(self.markets_str)
         if market_id not in markets:
             raise gl.vm.UserError("Market not found")
@@ -125,59 +118,71 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Betting must be closed before resolution")
         if market["status"] not in ["OPEN", "CLOSED_FOR_BETTING"]:
             raise gl.vm.UserError("Market already resolved")
+            
+        domain = market.get("authoritative_domain", "")
+        if not specific_url.startswith("https://" + domain) and not specific_url.startswith("http://" + domain):
+            raise gl.vm.UserError(f"URL must strictly belong to authoritative domain: {domain}")
 
         def leader_fn() -> str:
+            # 1. Fetch data
             try:
-                article_text = gl.nondet.web.render(market["source_url"], mode="text")[:2000]
+                article_text = gl.nondet.web.render(specific_url, mode="text")[:3000]
             except Exception:
-                return json.dumps({"decision": "UNKNOWN"})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Failed to fetch URL"})
+                
+            # 2. Agent 1: The Researcher
+            research_prompt = f"""
+            You are a meticulous Data Researcher.
+            Analyze the following article text and extract only the factual events related to this question: "{market["question"]}"
+            Do not make a final decision, just list the facts.
             
-            prompt = f"""
-            Based on the following news article, answer the question with exactly 'YES', 'NO', or 'UNKNOWN'.
-            If the article does not contain enough information to answer, reply 'UNKNOWN'.
-            
-            Question: {market["question"]}
-            
-            Article Content:
-            {article_text}
-            
-            Respond EXACTLY with a JSON object: {{"decision": "YES"}} or {{"decision": "NO"}} or {{"decision": "UNKNOWN"}}
+            Article: {article_text}
             """
             
             try:
-                ai_resp = gl.nondet.exec_prompt(prompt)
-                clean_resp = ai_resp.strip()
-                if clean_resp.startswith("```json"):
-                    clean_resp = clean_resp[7:]
-                elif clean_resp.startswith("```"):
-                    clean_resp = clean_resp[3:]
-                if clean_resp.endswith("```"):
-                    clean_resp = clean_resp[:-3]
-                clean_resp = clean_resp.strip()
+                research_report = gl.nondet.exec_prompt(research_prompt)
+            except Exception:
+                return json.dumps({"decision": "UNKNOWN", "reason": "Researcher Agent failed"})
                 
-                parsed = json.loads(clean_resp)
+            # 3. Agent 2: The Chief Judge
+            judge_prompt = f"""
+            You are the Chief Judge of an Oracle Protocol.
+            Based strictly on the following Research Report, answer the question: "{market["question"]}"
+            
+            Research Report:
+            {research_report}
+            
+            If the facts definitively confirm the event, output exactly: {{"decision": "YES"}}
+            If the facts definitively deny the event, output exactly: {{"decision": "NO"}}
+            If the facts are ambiguous or irrelevant, output exactly: {{"decision": "UNKNOWN"}}
+            
+            Output ONLY valid JSON.
+            """
+            
+            try:
+                ai_resp = gl.nondet.exec_prompt(judge_prompt)
+                clean_resp = ai_resp.strip()
+                if clean_resp.startswith("```json"): clean_resp = clean_resp[7:]
+                elif clean_resp.startswith("```"): clean_resp = clean_resp[3:]
+                if clean_resp.endswith("```"): clean_resp = clean_resp[:-3]
+                
+                parsed = json.loads(clean_resp.strip())
                 decision = str(parsed.get("decision", "UNKNOWN")).strip().upper()
-                if decision not in ["YES", "NO"]:
-                    decision = "UNKNOWN"
+                if decision not in ["YES", "NO"]: decision = "UNKNOWN"
                 return json.dumps({"decision": decision})
             except Exception:
-                return json.dumps({"decision": "UNKNOWN"})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing"})
 
         def validator_fn(leader_res) -> bool:
             try:
                 leader_str = ""
-                if type(leader_res) is str:
-                    leader_str = leader_res
-                elif hasattr(leader_res, "value"):
-                    leader_str = leader_res.value
-                elif hasattr(leader_res, "calldata"):
-                    leader_str = leader_res.calldata
-                else:
-                    return False
+                if type(leader_res) is str: leader_str = leader_res
+                elif hasattr(leader_res, "value"): leader_str = leader_res.value
+                elif hasattr(leader_res, "calldata"): leader_str = leader_res.calldata
+                else: return False
                     
                 l_data = json.loads(leader_str)
                 v_data = json.loads(leader_fn())
-                
                 return l_data.get("decision") == v_data.get("decision")
             except Exception:
                 return False
@@ -217,16 +222,17 @@ class PredictionMarketContract(gl.Contract):
         user_yes_pos = market["yes_positions"].get(user_addr_key, 0)
         user_no_pos = market["no_positions"].get(user_addr_key, 0)
         
+        # PROPORTIONAL INTEGER MATH FIX
         if status == "RESOLVED_YES":
             if user_yes_pos == 0:
-                raise gl.vm.UserError("No winning position to claim")
-            payout = int((user_yes_pos / yes_pool) * total_pool)
+                raise gl.vm.UserError("No winning position")
+            payout = (user_yes_pos * total_pool) // yes_pool
             market["yes_positions"][user_addr_key] = 0
             
         elif status == "RESOLVED_NO":
             if user_no_pos == 0:
-                raise gl.vm.UserError("No winning position to claim")
-            payout = int((user_no_pos / no_pool) * total_pool)
+                raise gl.vm.UserError("No winning position")
+            payout = (user_no_pos * total_pool) // no_pool
             market["no_positions"][user_addr_key] = 0
             
         elif status == "FAILED":

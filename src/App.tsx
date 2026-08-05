@@ -36,6 +36,8 @@ function App() {
   const [betAmounts, setBetAmounts] = useState<{[key: string]: number}>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
   const [messages, setMessages] = useState<{[key: string]: string}>({});
+  const [allBalances, setAllBalances] = useState<{[key: string]: number}>({});
+  const [balance, setBalance] = useState(0);
   
   // Semantic Analyzer for Auto-Domain Selection
   useEffect(() => {

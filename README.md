@@ -2,7 +2,7 @@
 
 A fully decentralized prediction market where outcomes are resolved entirely by GenLayer's Intelligent Contracts (GenVM). It eliminates the need for slow, manual, or biased human oracles by utilizing LLMs to read real-world news and deterministically resolve markets on-chain.
 
-**Smart Contract (GenVM StudioNet):** `0xa46716236D6bB81C767a24170b6591d4b2612320`
+**Smart Contract (GenVM StudioNet):** `0xDa43e586BA0FA02Fc3AcbF2FB15B790C5c596dD0`
 
 ---
 
@@ -13,10 +13,11 @@ A fully decentralized prediction market where outcomes are resolved entirely by 
 |---|---|
 | **Pari-Mutuel Economics** | Peer-to-peer betting. Winners take the losers' liquidity. Zero-sum game. |
 | **Value Custody** | Internal token ledger (`balances`). Bets deduct real G-USD tokens. |
-| **AI Time-Lock (`TOO_EARLY`)** | Prevents early resolution of future-dated markets. Funds remain locked until the event concludes. |
-| **Autonomous AI Oracle** | A Multi-Agent Tribunal (Searcher, Researcher, Judge) resolves markets automatically. |
-| **Verifiable Sources** | Integrated with `DuckDuckGo HTML` search via `gl.nondet.web.render()` for robust automated fact-checking. |
-| **Claims & Refunds** | Pro-rata rewards for winners. Ambiguous/Failed searches automatically trigger 100% refunds. |
+| **AI Time-Lock (`TOO_EARLY`)** | Real `datetime.date.today()` comparison in contract — blocks resolution before deadline. Funds remain locked. |
+| **Autonomous AI Oracle** | Multi-Agent Tribunal (Searcher → Researcher → Chief Judge) resolves markets without human intervention. |
+| **Verifiable Sources** | DuckDuckGo HTML search via `gl.nondet.web.render()` — no Captcha, no blocks. |
+| **Bet Deadline Lock** | `place_bet()` rejects bets after the settlement deadline at contract level. |
+| **Claims & Refunds** | Pro-rata payout for winners. `FAILED` markets trigger 100% refund for all participants. |
 
 ### 💻 Frontend (React + Vite)
 - Connect GenLayer wallet (Auto-generated in memory)

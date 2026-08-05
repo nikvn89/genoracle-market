@@ -1,7 +1,8 @@
-# v0.4.0 - GenOracle V3 (Multi-Agent Tribunal & Precise Integer Math)
+# v0.5.0 - GenOracle V3 (Real Deadline Enforcement + Bet Lock after Deadline)
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 import json
+from datetime import date
 from genlayer import *
 
 class PredictionMarketContract(gl.Contract):
@@ -19,7 +20,6 @@ class PredictionMarketContract(gl.Contract):
         balances = json.loads(self.balances_str)
         claimed = json.loads(self.claimed_faucet_str)
         
-        # GenVM sender validation
         sender = str(gl.message.sender_address).lower()
         user_lower = user.lower()
         if sender != user_lower:
@@ -38,7 +38,8 @@ class PredictionMarketContract(gl.Contract):
     @gl.public.view
     def get_state(self) -> str:
         balances = json.loads(self.balances_str)
-        return json.dumps({"balances": balances})
+        claimed = json.loads(self.claimed_faucet_str)
+        return json.dumps({"balances": balances, "claimed_faucet": claimed})
 
     @gl.public.write
     def create_market(self, market_id: str, question: str, authoritative_domain: str, deadline: str) -> None:
@@ -78,6 +79,13 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Market not found")
         if markets[market_id]["status"] != "OPEN":
             raise gl.vm.UserError("Market is closed for betting.")
+
+        # Enforce deadline: no bets accepted after the settlement deadline
+        deadline = markets[market_id].get("deadline", "")
+        if deadline:
+            today_str = date.today().isoformat()
+            if today_str > deadline:
+                raise gl.vm.UserError(f"Betting closed. Settlement deadline was {deadline}.")
             
         sender = str(gl.message.sender_address).lower()
         user_addr_key = user_addr.lower()
@@ -116,15 +124,21 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Betting must be closed before resolution")
         if market["status"] not in ["OPEN", "CLOSED_FOR_BETTING"]:
             raise gl.vm.UserError("Market already resolved")
+
+        # REAL deadline enforcement: block resolution if event deadline has not passed
+        deadline = market.get("deadline", "")
+        if deadline:
+            today_str = date.today().isoformat()
+            if today_str <= deadline:
+                raise gl.vm.UserError(f"TOO_EARLY: Event deadline is {deadline}. Today is {today_str}. Funds remain locked.")
             
         domain = market.get("authoritative_domain", "")
 
         def leader_fn() -> str:
-            # 1. Agent 1: The Search Strategist
-            domain_instruction = f'to search on the domain "{domain}"' if domain else "to search the open web"
+            # Agent 1: The Search Strategist
             query_prompt = f"""
             You are an expert search strategist. The user wants to find the answer to this question: "{market["question"]}"
-            Generate a precise search query to find the exact fact, strongly including any dates, times, or specific entities mentioned in the question.
+            Generate a precise search query to find the exact fact, strongly including any dates, times, or specific entities mentioned.
             Output ONLY the query string, nothing else. Do not use quotes.
             """
             try:
@@ -135,7 +149,6 @@ class PredictionMarketContract(gl.Contract):
                 else:
                     search_url = f"https://html.duckduckgo.com/html/?q={query}"
                     
-                # Use GenLayer's built-in web.render to bypass sandbox restrictions and auto-strip HTML
                 search_text = gl.nondet.web.render(search_url, mode="text")
                 if len(search_text) > 4000:
                     search_text = search_text[:4000]
@@ -143,7 +156,7 @@ class PredictionMarketContract(gl.Contract):
             except Exception as e:
                 return json.dumps({"decision": "UNKNOWN", "reason": f"Web Search failed: {str(e)}"})
                 
-            # 2. Agent 2: The Researcher
+            # Agent 2: The Researcher
             research_prompt = f"""
             You are a meticulous Data Researcher.
             Analyze the following search engine results and extract only the factual events related to this question: "{market["question"]}"
@@ -158,7 +171,7 @@ class PredictionMarketContract(gl.Contract):
             except Exception:
                 return json.dumps({"decision": "UNKNOWN", "reason": "Researcher Agent failed"})
                 
-            # 3. Agent 3: The Chief Judge
+            # Agent 3: The Chief Judge
             judge_prompt = f"""
             You are the Chief Judge of an Oracle Protocol.
             Based strictly on the following Research Report, answer the question: "{market["question"]}"
@@ -198,7 +211,6 @@ class PredictionMarketContract(gl.Contract):
                 research = l_data.get("research", "")
                 
                 if not research:
-                    # If leader failed web search and returned UNKNOWN, validators accept this failure
                     return leader_decision == "UNKNOWN"
                     
                 judge_prompt = f"""
@@ -237,7 +249,9 @@ class PredictionMarketContract(gl.Contract):
         elif decision == "NO":
             market["status"] = "RESOLVED_NO"
         elif decision == "TOO_EARLY":
-            raise gl.vm.UserError("AI Oracle: The event deadline has not passed yet. Money remains locked.")
+            # AI says too early but deadline has passed — treat as UNKNOWN/FAILED
+            market["status"] = "FAILED"
+            reason = "AI could not find conclusive evidence for this event."
         else:
             market["status"] = "FAILED"
             
@@ -266,7 +280,7 @@ class PredictionMarketContract(gl.Contract):
         user_yes_pos = market["yes_positions"].get(user_addr_key, 0)
         user_no_pos = market["no_positions"].get(user_addr_key, 0)
         
-        # PROPORTIONAL INTEGER MATH FIX
+        # PROPORTIONAL INTEGER MATH
         if status == "RESOLVED_YES":
             if user_yes_pos == 0:
                 raise gl.vm.UserError("No winning position")

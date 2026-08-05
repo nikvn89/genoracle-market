@@ -129,12 +129,15 @@ class PredictionMarketContract(gl.Contract):
             Output ONLY the query string, nothing else. Example: US election winner 2024
             """
             try:
+                import urllib.request
+                import urllib.error
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
-                # DuckDuckGo HTML search returns snippets containing the answers!
-                search_text = gl.nondet.web.render(search_url, mode="text")[:4000]
-            except Exception:
-                return json.dumps({"decision": "UNKNOWN", "reason": "Agent 1 or Web Search failed"})
+                req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    search_text = response.read().decode('utf-8')[:4000]
+            except Exception as e:
+                return json.dumps({"decision": "UNKNOWN", "reason": f"Web Search failed: {str(e)}"})
                 
             # 2. Agent 2: The Researcher
             research_prompt = f"""
@@ -188,7 +191,8 @@ class PredictionMarketContract(gl.Contract):
                 research = l_data.get("research", "")
                 
                 if not research:
-                    return False
+                    # If leader failed web search and returned UNKNOWN, validators accept this failure
+                    return leader_decision == "UNKNOWN"
                     
                 judge_prompt = f"""
                 You are the Chief Judge of an Oracle Protocol.

@@ -54,7 +54,7 @@ function App() {
   useEffect(() => {
     fetchAllMarkets();
     fetchBalance();
-  }, [marketIds, activeWallet]);
+  }, [activeWallet]);
 
   const fetchBalance = async () => {
     try {

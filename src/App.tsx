@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = '0xad5CF450b7590a8625227923B86e18321d7251e5'; // V16 (Bing Search)
+const CONTRACT_ADDRESS = "0xaf2E192bdE68B86bcD68D97dDa956Bd7bDB3b89e"; // V17 (Yahoo Search + Unknown Enforcement)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x3C9B69F85E2CD0c980343aA02CA5754eD57c3F51';
+const CONTRACT_ADDRESS = "0x75d3f8D8F1360F40B1c433E3967B8368cCE829A8";
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

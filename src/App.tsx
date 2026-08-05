@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = '0xF2A6636DcdEE80A8424Ee85Dd62E26A79Eb1c1ae'; // V11 (Fix HTML Parsing)
+const CONTRACT_ADDRESS = '0x399e91E4cae2c3Dc55566f4CDF0d5de6221BF58c'; // V13 (Super Search & AI Reasoning UI)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
@@ -580,6 +580,13 @@ function App() {
               <div key={id} className="market-card" style={{borderColor: markets[id].status === 'FAILED' ? 'var(--warning)' : 'var(--success)', boxShadow: 'none'}}>
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>
                 <h2 style={{color: markets[id].status === 'FAILED' ? 'var(--warning)' : 'var(--success)', textAlign: 'center', margin: '20px 0', fontSize: '1.5rem'}}>{markets[id].status}</h2>
+                
+                {markets[id].resolution_reason && (
+                  <div style={{background: 'rgba(0,0,0,0.4)', border: '1px solid var(--accent-color)', borderRadius: '6px', padding: '12px', marginBottom: '15px'}}>
+                    <div style={{color: 'var(--accent-color)', fontSize: '11px', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 'bold'}}>AI Reasoning / Research Report</div>
+                    <div style={{color: '#ddd', fontSize: '12px', whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto'}}>{markets[id].resolution_reason}</div>
+                  </div>
+                )}
                 
                 {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
                   (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||

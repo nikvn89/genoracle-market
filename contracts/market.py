@@ -52,7 +52,8 @@ class PredictionMarketContract(gl.Contract):
                 "yes_pool": 0,
                 "no_pool": 0,
                 "yes_positions": {},
-                "no_positions": {}
+                "no_positions": {},
+                "resolution_reason": ""
             }
             self.markets_str = json.dumps(markets)
 
@@ -123,8 +124,8 @@ class PredictionMarketContract(gl.Contract):
             domain_instruction = f'to search on the domain "{domain}"' if domain else "to search the open web"
             query_prompt = f"""
             You are an expert search strategist. The user wants to find the answer to this question: "{market["question"]}"
-            Generate a concise 2 to 4 word search query (keywords only) {domain_instruction}.
-            Output ONLY the query string, nothing else. Example: US election winner 2024
+            Generate a precise search query to find the exact fact, strongly including any dates, times, or specific entities mentioned in the question.
+            Output ONLY the query string, nothing else. Do not use quotes.
             """
             try:
                 import urllib.request
@@ -229,6 +230,7 @@ class PredictionMarketContract(gl.Contract):
         final_res = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         final_data = json.loads(final_res)
         decision = final_data.get("decision", "UNKNOWN")
+        reason = final_data.get("research", final_data.get("reason", "Ambiguous facts or exception"))
 
         if decision == "YES":
             market["status"] = "RESOLVED_YES"
@@ -237,6 +239,7 @@ class PredictionMarketContract(gl.Contract):
         else:
             market["status"] = "FAILED"
             
+        market["resolution_reason"] = reason
         self.markets_str = json.dumps(markets)
 
     @gl.public.write

@@ -430,7 +430,10 @@ function App() {
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px'}}>
               <h2 style={{borderBottom: 'none', padding: 0, margin: 0}}><span style={{color: 'var(--accent-color)'}}>🎲</span> Order Book</h2>
               <div style={{display: 'flex', gap: '10px'}}>
-                <button className="btn-primary" onClick={handleClearHistory} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--danger)', border: '1px solid var(--danger)'}}>🗑️ Clear History</button>
+                {hiddenMarkets.length > 0 && (
+                  <button className="btn-primary" onClick={() => { setHiddenMarkets([]); localStorage.removeItem('genOracleHidden'); fetchAllMarkets(); }} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--success)', border: '1px solid var(--success)'}}>👁️ Restore Hidden</button>
+                )}
+                <button className="btn-primary" onClick={handleClearHistory} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--danger)', border: '1px solid var(--danger)'}}>🗑️ Hide All Markets</button>
                 <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
               </div>
             </div>

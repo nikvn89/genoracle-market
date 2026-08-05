@@ -131,9 +131,9 @@ class PredictionMarketContract(gl.Contract):
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 
                 if domain:
-                    search_url = f"https://www.bing.com/search?q=site:{domain}+{query}"
+                    search_url = f"https://search.yahoo.com/search?p=site:{domain}+{query}"
                 else:
-                    search_url = f"https://www.bing.com/search?q={query}"
+                    search_url = f"https://search.yahoo.com/search?p={query}"
                     
                 # Use GenLayer's built-in web.render to bypass sandbox restrictions and auto-strip HTML
                 search_text = gl.nondet.web.render(search_url, mode="text")
@@ -168,7 +168,7 @@ class PredictionMarketContract(gl.Contract):
             
             If the facts definitively confirm the event, output exactly: YES
             If the facts definitively deny the event, output exactly: NO
-            If the facts are ambiguous or irrelevant, output exactly: UNKNOWN
+            If the facts are ambiguous, the event has not happened yet (future), or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
             
             Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
             """
@@ -207,7 +207,7 @@ class PredictionMarketContract(gl.Contract):
                 
                 If the facts definitively confirm the event, output exactly: YES
                 If the facts definitively deny the event, output exactly: NO
-                If the facts are ambiguous or irrelevant, output exactly: UNKNOWN
+                If the facts are ambiguous, the event has not happened yet (future), or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
                 
                 Output ONLY a single word: YES, NO, or UNKNOWN. Do not explain.
                 """

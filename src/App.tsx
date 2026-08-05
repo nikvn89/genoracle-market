@@ -475,7 +475,7 @@ function App() {
                 <div className="ai-scanning"><div className="scan-line"></div></div>
                 <h3>{markets[id].question}</h3>
                 <div style={{background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '8px', marginTop: '15px', border: '1px solid var(--accent-color)'}}>
-                  <p style={{color: '#fff', fontSize:'0.9rem', fontFamily: 'Rajdhani', fontWeight: 'bold'}}>> {messages[`res_${id}`]}</p>
+                  <p style={{color: '#fff', fontSize:'0.9rem', fontFamily: 'Rajdhani', fontWeight: 'bold'}}>{">"} {messages[`res_${id}`]}</p>
                 </div>
               </div>
             ))}

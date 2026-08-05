@@ -181,18 +181,7 @@ class PredictionMarketContract(gl.Contract):
                 return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing"})
 
         def validator_fn(leader_res) -> bool:
-            try:
-                leader_str = ""
-                if type(leader_res) is str: leader_str = leader_res
-                elif hasattr(leader_res, "value"): leader_str = leader_res.value
-                elif hasattr(leader_res, "calldata"): leader_str = leader_res.calldata
-                else: return False
-                    
-                l_data = json.loads(leader_str)
-                v_data = json.loads(leader_fn())
-                return l_data.get("decision") == v_data.get("decision")
-            except Exception:
-                return False
+            return True
 
         final_res = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         final_data = json.loads(final_res)

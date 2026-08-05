@@ -17,8 +17,9 @@ function App() {
   
   const [markets, setMarkets] = useState<any>({});
   const [marketIds, setMarketIds] = useState<string[]>([]);
-  const [balance, setBalance] = useState<number>(0);
-  const [allBalances, setAllBalances] = useState<{[key: string]: number}>({});
+  const [hiddenMarkets, setHiddenMarkets] = useState<string[]>(() => {
+    return JSON.parse(localStorage.getItem('genOracleHidden') || '[]');
+  });
   
   const [createLoading, setCreateLoading] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
@@ -100,8 +101,10 @@ function App() {
       const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
       if (data) {
         setMarkets(data);
-        // Sort IDs descending so newest are on top
-        const ids = Object.keys(data).sort((a, b) => Number(b) - Number(a));
+        // Sort IDs descending so newest are on top, exclude hidden
+        const ids = Object.keys(data)
+          .filter(id => !hiddenMarkets.includes(id))
+          .sort((a, b) => Number(b) - Number(a));
         setMarketIds(ids);
       }
     } catch(e) {}
@@ -286,8 +289,12 @@ function App() {
   };
 
   const handleClearHistory = () => {
-    // History is now on-chain, so we don't clear it locally anymore.
-    alert("History is fully synchronized with the blockchain. You cannot clear it locally anymore!");
+    if (window.confirm("Are you sure you want to hide all current markets from your screen?")) {
+      const newHidden = [...hiddenMarkets, ...marketIds];
+      setHiddenMarkets(newHidden);
+      localStorage.setItem('genOracleHidden', JSON.stringify(newHidden));
+      setMarketIds([]);
+    }
   };
 
   const [walletConnected, setWalletConnected] = useState(false);
@@ -452,6 +459,7 @@ function App() {
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px'}}>
               <h2 style={{borderBottom: 'none', padding: 0, margin: 0}}><span style={{color: 'var(--accent-color)'}}>🎲</span> Order Book</h2>
               <div style={{display: 'flex', gap: '10px'}}>
+                <button className="btn-primary" onClick={handleClearHistory} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto', background: 'var(--danger)', border: '1px solid var(--danger)'}}>🗑️ Clear History</button>
                 <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
               </div>
             </div>

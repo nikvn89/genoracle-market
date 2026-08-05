@@ -108,7 +108,7 @@ class PredictionMarketContract(gl.Contract):
         return "Bet placed"
 
     @gl.public.write
-    def resolve_market(self, market_id: str, specific_url: str) -> None:
+    def resolve_market(self, market_id: str) -> None:
         markets = json.loads(self.markets_str)
         if market_id not in markets:
             raise gl.vm.UserError("Market not found")
@@ -120,23 +120,30 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Market already resolved")
             
         domain = market.get("authoritative_domain", "")
-        if not specific_url.startswith("https://" + domain) and not specific_url.startswith("http://" + domain):
-            raise gl.vm.UserError(f"URL must strictly belong to authoritative domain: {domain}")
 
         def leader_fn() -> str:
-            # 1. Fetch data
+            # 1. Agent 1: The Search Strategist
+            query_prompt = f"""
+            You are an expert search strategist. The user wants to find the answer to this question: "{market["question"]}"
+            Generate a concise 2 to 4 word search query (keywords only) to search on the domain "{domain}".
+            Output ONLY the query string, nothing else. Example: US election winner 2024
+            """
             try:
-                article_text = gl.nondet.web.render(specific_url, mode="text")[:3000]
+                query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
+                search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
+                # DuckDuckGo HTML search returns snippets containing the answers!
+                search_text = gl.nondet.web.render(search_url, mode="text")[:4000]
             except Exception:
-                return json.dumps({"decision": "UNKNOWN", "reason": "Failed to fetch URL"})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Agent 1 or Web Search failed"})
                 
-            # 2. Agent 1: The Researcher
+            # 2. Agent 2: The Researcher
             research_prompt = f"""
             You are a meticulous Data Researcher.
-            Analyze the following article text and extract only the factual events related to this question: "{market["question"]}"
-            Do not make a final decision, just list the facts.
+            Analyze the following search engine results and extract only the factual events related to this question: "{market["question"]}"
+            Do not make a final decision, just list the facts found in the snippets.
             
-            Article: {article_text}
+            Search Results:
+            {search_text}
             """
             
             try:
@@ -144,7 +151,7 @@ class PredictionMarketContract(gl.Contract):
             except Exception:
                 return json.dumps({"decision": "UNKNOWN", "reason": "Researcher Agent failed"})
                 
-            # 3. Agent 2: The Chief Judge
+            # 3. Agent 3: The Chief Judge
             judge_prompt = f"""
             You are the Chief Judge of an Oracle Protocol.
             Based strictly on the following Research Report, answer the question: "{market["question"]}"

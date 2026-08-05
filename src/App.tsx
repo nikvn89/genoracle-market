@@ -32,7 +32,20 @@ function App() {
   const [betAmounts, setBetAmounts] = useState<{[key: string]: number}>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
   const [messages, setMessages] = useState<{[key: string]: string}>({});
-  const [specificUrls, setSpecificUrls] = useState<{[key: string]: string}>({});
+  
+  // Semantic Analyzer for Auto-Domain Selection
+  useEffect(() => {
+    const q = marketQuestion.toLowerCase();
+    if (q.includes('bitcoin') || q.includes('btc') || q.includes('crypto') || q.includes('price')) {
+        setMarketDomain('coinmarketcap.com');
+    } else if (q.includes('election') || q.includes('president') || q.includes('vote') || q.includes('win')) {
+        setMarketDomain('apnews.com');
+    } else if (q.includes('weather') || q.includes('rain') || q.includes('flat') || q.includes('earth')) {
+        setMarketDomain('wikipedia.org');
+    } else if (q.length > 0) {
+        setMarketDomain('bbc.com');
+    }
+  }, [marketQuestion]);
   
   useEffect(() => {
     fetchAllMarkets();
@@ -196,7 +209,21 @@ function App() {
       await client.writeContract({
         account, address: CONTRACT_ADDRESS, functionName: 'close_betting', args: [id]
       });
-      await new Promise(r => setTimeout(r, 4000));
+      
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const res = await client.readContract({
+          address: CONTRACT_ADDRESS,
+          functionName: 'get_market',
+          args: [id]
+        }).catch(() => null);
+        if (res) {
+          const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
+          if (data.status === 'CLOSED_FOR_BETTING') {
+            break;
+          }
+        }
+      }
       await fetchAllMarkets();
     } catch(err: any) {
       alert("Error closing betting: " + err.message);
@@ -206,25 +233,21 @@ function App() {
 
   const handleResolve = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
-    const specificUrl = specificUrls[id];
-    if (!specificUrl || !specificUrl.startsWith('http')) {
-      alert("Please provide a valid Specific Article URL (starting with http/https) from the Authoritative Domain.");
-      return;
-    }
 
     setLoadingStates(prev => ({...prev, [`res_${id}`]: true}));
-    setMessages(prev => ({...prev, [`res_${id}`]: 'Executing Multi-Agent Tribunal...'}));
+    setMessages(prev => ({...prev, [`res_${id}`]: 'Initializing Fully Autonomous Workflow...'}));
     
     client.writeContract({
-      account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id, specificUrl]
+      account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id]
     }).catch(console.error);
 
     let attempt = 0;
     const interval = setInterval(async () => {
       attempt++;
-      if (attempt < 4) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 1 (Researcher) fetching data from URL...`}));
-      else if (attempt < 10) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 1 summarizing facts...`}));
-      else setMessages(prev => ({...prev, [`res_${id}`]: `Agent 2 (Chief Judge) analyzing facts and finalizing ruling...`}));
+      if (attempt < 4) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 1 generating search strategy...`}));
+      else if (attempt < 8) setMessages(prev => ({...prev, [`res_${id}`]: `Executing Web Search on selected domain...`}));
+      else if (attempt < 12) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 2 reading search snippets and extracting facts...`}));
+      else setMessages(prev => ({...prev, [`res_${id}`]: `Agent 3 (Chief Judge) finalizing YES/NO ruling...`}));
 
       await fetchAllMarkets();
       const res = await client.readContract({
@@ -382,7 +405,6 @@ function App() {
                   type="button" 
                   onClick={() => {
                     setMarketQuestion("Will it rain in London tomorrow?");
-                    setMarketUrl("https://weather.com/en-GB/weather/today/l/UKXX0085:1:UK");
                     setMarketDeadline("2026-12-31");
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 210, 255, 0.05)', border: '1px dashed var(--primary-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
@@ -520,9 +542,8 @@ function App() {
                   </button>
                 ) : (
                   <div style={{marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                    <input type="url" placeholder={`Specific URL from ${markets[id].authoritative_domain}`} value={specificUrls[id] || ''} onChange={(e) => setSpecificUrls(prev => ({...prev, [id]: e.target.value}))} style={{padding: '8px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', fontSize: '0.85rem'}} />
                     <button type="button" className="btn-primary" onClick={(e) => handleResolve(e, id)}>
-                      🤖 Summon Multi-Agent Tribunal
+                      🤖 Summon Autonomous Tribunal
                     </button>
                   </div>
                 )}

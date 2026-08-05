@@ -370,7 +370,7 @@ function App() {
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 210, 255, 0.05)', border: '1px dashed var(--primary-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
                 >
-                  🌧️ Weather: Rain in London?
+                  🌧️ Weather: Rain in London? (May block AI)
                 </button>
                 <button 
                   type="button" 
@@ -381,7 +381,18 @@ function App() {
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 0, 122, 0.05)', border: '1px dashed var(--accent-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
                 >
-                  📈 Crypto: BTC {">"} $100k?
+                  📈 Crypto: BTC {">"} $100k? (May block AI)
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setMarketQuestion("Is the Earth flat?");
+                    setMarketUrl("https://en.wikipedia.org/wiki/Myth_of_the_flat_Earth");
+                    setMarketDeadline("2026-12-31");
+                  }}
+                  style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 255, 136, 0.05)', border: '1px dashed var(--success)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
+                >
+                  🌍 Science: Is Earth flat? (100% works - Wikipedia)
                 </button>
               </div>
             </div>

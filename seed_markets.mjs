@@ -2,7 +2,7 @@ import { createClient, createAccount } from 'genlayer-js';
 import { studionet } from 'genlayer-js/chains';
 
 const client = createClient({ chain: studionet });
-const CONTRACT_ADDRESS = "0x701B88A96976B428B7b4B0F6981f3CB9265143B2";
+const CONTRACT_ADDRESS = "0xa46716236D6bB81C767a24170b6591d4b2612320";
 
 // Admin account
 const admin = createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');

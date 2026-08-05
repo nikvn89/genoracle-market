@@ -131,9 +131,9 @@ class PredictionMarketContract(gl.Contract):
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 
                 if domain:
-                    search_url = f"https://search.yahoo.com/search?p=site:{domain}+{query}"
+                    search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
                 else:
-                    search_url = f"https://search.yahoo.com/search?p={query}"
+                    search_url = f"https://html.duckduckgo.com/html/?q={query}"
                     
                 # Use GenLayer's built-in web.render to bypass sandbox restrictions and auto-strip HTML
                 search_text = gl.nondet.web.render(search_url, mode="text")
@@ -166,12 +166,13 @@ class PredictionMarketContract(gl.Contract):
             Research Report:
             {research_report}
             
-            If the facts definitively confirm the event, output exactly: YES
-            If the facts definitively deny the event, output exactly: NO
-            If the event has not happened yet (in the future) or is currently ongoing with no final result, output exactly: TOO_EARLY
-            If the facts are ambiguous or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
+            RULES for Output:
+            1. If the facts in the report DEFINITIVELY CONFIRM the event occurred, output exactly: YES
+            2. If the facts in the report DEFINITIVELY DENY the event occurred, output exactly: NO
+            3. If the event has not happened yet (in the future), output exactly: TOO_EARLY
+            4. If the report says "no information", "search failed", "Captcha", or if the facts are missing/ambiguous, output exactly: UNKNOWN
             
-            Output ONLY a single word: YES, NO, TOO_EARLY, or UNKNOWN. Do not explain.
+            Output ONLY a single word from the options above. Do not explain.
             """
             
             try:
@@ -207,12 +208,13 @@ class PredictionMarketContract(gl.Contract):
                 Research Report:
                 {research}
                 
-                If the facts definitively confirm the event, output exactly: YES
-                If the facts definitively deny the event, output exactly: NO
-                If the event has not happened yet (in the future) or is currently ongoing with no final result, output exactly: TOO_EARLY
-                If the facts are ambiguous or if the report contains Captcha/Robot checks, output exactly: UNKNOWN
+                RULES for Output:
+                1. If the facts in the report DEFINITIVELY CONFIRM the event occurred, output exactly: YES
+                2. If the facts in the report DEFINITIVELY DENY the event occurred, output exactly: NO
+                3. If the event has not happened yet (in the future), output exactly: TOO_EARLY
+                4. If the report says "no information", "search failed", "Captcha", or if the facts are missing/ambiguous, output exactly: UNKNOWN
                 
-                Output ONLY a single word: YES, NO, TOO_EARLY, or UNKNOWN. Do not explain.
+                Output ONLY a single word from the options above. Do not explain.
                 """
                 ai_resp = gl.nondet.exec_prompt(judge_prompt).strip().upper()
                 

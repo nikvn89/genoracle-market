@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0x701B88A96976B428B7b4B0F6981f3CB9265143B2"; // V21 (Fix deployment error)
+const CONTRACT_ADDRESS = "0xa46716236D6bB81C767a24170b6591d4b2612320"; // V22 (DuckDuckGo Search + Better Judge Prompt)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

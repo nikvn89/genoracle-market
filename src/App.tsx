@@ -381,7 +381,7 @@ function App() {
                   }}
                   style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 0, 122, 0.05)', border: '1px dashed var(--accent-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
                 >
-                  📈 Crypto: BTC > $100k?
+                  📈 Crypto: BTC {">"} $100k?
                 </button>
               </div>
             </div>

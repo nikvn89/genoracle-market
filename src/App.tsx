@@ -2,24 +2,19 @@ import { useState, useEffect, useMemo } from 'react';
 import './index.css';
 import { createClient, createAccount } from 'genlayer-js';
 
-// Khởi tạo GenLayer Client
 const client = createClient({
   endpoint: '/api/rpc'
 });
 
-// V2 Contract Address
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x771a9E7e00F8E7A570A4E3DcBd4Dd71fa3eAcB82'; 
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x63E45A62BD1aAe8e757D0Cd34026e750539de3AB'; 
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');
-  
-  // Wallet Switcher State
   const [activeWallet, setActiveWallet] = useState<'A' | 'B'>('A');
   const accountA = useMemo(() => createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28'), []);
   const accountB = useMemo(() => createAccount('0x8888888888888888888888888888888888888888888888888888888888888888'), []);
   const account = activeWallet === 'A' ? accountA : accountB;
   
-  // Market States
   const [markets, setMarkets] = useState<any>({});
   const [marketIds, setMarketIds] = useState<string[]>(() => {
     return JSON.parse(localStorage.getItem('genOracleMarkets') || '[]');
@@ -29,13 +24,11 @@ function App() {
   
   const [createLoading, setCreateLoading] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
-  const [faucetElapsed, setFaucetElapsed] = useState(0);
   
   const [marketQuestion, setMarketQuestion] = useState("");
   const [marketUrl, setMarketUrl] = useState("");
   const [marketDeadline, setMarketDeadline] = useState("");
   
-  // Bet States
   const [betAmounts, setBetAmounts] = useState<{[key: string]: number}>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
   const [messages, setMessages] = useState<{[key: string]: string}>({});
@@ -55,7 +48,6 @@ function App() {
       const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
       if (data && data.balances) {
         setAllBalances(data.balances);
-        // Smart contract stores balances in lowercase, so we need to match it
         const lowerAddress = account.address.toLowerCase();
         const newBalance = data.balances[lowerAddress] || data.balances[account.address] || 0;
         setBalance(newBalance);
@@ -67,7 +59,6 @@ function App() {
 
   const handleFaucet = async () => {
     setLoadingStates(prev => ({...prev, faucet: true}));
-    setFaucetElapsed(0);
     try {
       await client.writeContract({
         account,
@@ -75,10 +66,8 @@ function App() {
         functionName: 'faucet',
         args: [account.address]
       });
-      // Poll until balance increases (up to 60s for GenVM BFT Consensus)
       const prevBalance = balance;
       for (let i = 1; i <= 20; i++) {
-        setFaucetElapsed(i * 3);
         await new Promise(r => setTimeout(r, 3000));
         const updatedBalance = await fetchBalance();
         if (updatedBalance > prevBalance) break;
@@ -87,7 +76,6 @@ function App() {
       alert('Faucet error: ' + e.message);
     }
     setLoadingStates(prev => ({...prev, faucet: false}));
-    setFaucetElapsed(0);
   };
 
   const fetchAllMarkets = async () => {
@@ -109,32 +97,32 @@ function App() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!marketQuestion || !marketDeadline) return;
+    if (!marketQuestion || !marketDeadline || !marketUrl) {
+      setCreateMsg('All fields are required. You MUST provide a valid source URL.');
+      return;
+    }
+    if (!marketUrl.startsWith('http')) {
+      setCreateMsg('Error: Source URL must start with http or https');
+      return;
+    }
     
     setCreateLoading(true);
-    setCreateMsg('Creating market on GenLayer...');
-    
+    setCreateMsg('Deploying Market to GenLayer Network...');
     const newMarketId = Date.now().toString();
-    
-    // Auto-generate DuckDuckGo Search URL if left blank
-    const finalUrl = marketUrl.trim() 
-      ? marketUrl 
-      : `https://html.duckduckgo.com/html/?q=${encodeURIComponent(marketQuestion)}`;
     
     try {
       await client.writeContract({
         account,
         address: CONTRACT_ADDRESS,
         functionName: 'create_market',
-        args: [newMarketId, marketQuestion, finalUrl, marketDeadline]
+        args: [newMarketId, marketQuestion, marketUrl.trim(), marketDeadline]
       });
       
       const newIds = [newMarketId, ...marketIds];
       setMarketIds(newIds);
       localStorage.setItem('genOracleMarkets', JSON.stringify(newIds));
       
-      // Poll until market appears on blockchain
-      setCreateMsg('Waiting for blockchain confirmation...');
+      setCreateMsg('Waiting for network consensus...');
       for (let i = 0; i < 8; i++) {
         await new Promise(r => setTimeout(r, 3000));
         try {
@@ -150,7 +138,7 @@ function App() {
           }
         } catch(e) {}
       }
-      setCreateMsg('✅ Market created successfully!');
+      setCreateMsg('✅ Market Initialized Successfully!');
       setMarketQuestion('');
       setMarketUrl('');
       setMarketDeadline('');
@@ -163,7 +151,7 @@ function App() {
   const handleBet = async (e: React.FormEvent, id: string, isYes: boolean) => {
     e.preventDefault();
     setLoadingStates(prev => ({...prev, [`bet_${id}`]: true}));
-    setMessages(prev => ({...prev, [`bet_${id}`]: `Placing ${isYes ? 'YES' : 'NO'} bet...`}));
+    setMessages(prev => ({...prev, [`bet_${id}`]: `Encrypting ${isYes ? 'YES' : 'NO'} payload...`}));
     
     const amount = Number(betAmounts[id]) || 100;
     
@@ -178,9 +166,8 @@ function App() {
         args: [id, account.address.toLowerCase(), isYes, amount]
       });
       
-      setMessages(prev => ({...prev, [`bet_${id}`]: `Waiting for blockchain confirmation...`}));
+      setMessages(prev => ({...prev, [`bet_${id}`]: `Awaiting BFT validation...`}));
       
-      // Poll until market updates (up to 30s)
       for (let i = 0; i < 15; i++) {
         await new Promise(r => setTimeout(r, 2000));
         try {
@@ -198,9 +185,9 @@ function App() {
       }
       
       await fetchAllMarkets();
-      setMessages(prev => ({...prev, [`bet_${id}`]: `Success: Bet placed on ${isYes ? 'YES' : 'NO'}.`}));
+      setMessages(prev => ({...prev, [`bet_${id}`]: `✅ Order Filled on ${isYes ? 'YES' : 'NO'}.`}));
     } catch(err: any) {
-      setMessages(prev => ({...prev, [`bet_${id}`]: 'Error: ' + err.message}));
+      setMessages(prev => ({...prev, [`bet_${id}`]: '❌ Error: ' + err.message}));
     }
     setLoadingStates(prev => ({...prev, [`bet_${id}`]: false}));
   };
@@ -223,7 +210,7 @@ function App() {
   const handleResolve = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     setLoadingStates(prev => ({...prev, [`res_${id}`]: true}));
-    setMessages(prev => ({...prev, [`res_${id}`]: 'Sending to AI Oracle...'}));
+    setMessages(prev => ({...prev, [`res_${id}`]: 'Executing Multi-Agent Tribunal...'}));
     
     client.writeContract({
       account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id]
@@ -232,9 +219,11 @@ function App() {
     let attempt = 0;
     const interval = setInterval(async () => {
       attempt++;
-      setMessages(prev => ({...prev, [`res_${id}`]: `AI Validators reading source... (${attempt * 5}s elapsed)`}));
+      if (attempt < 4) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 1 (Researcher) fetching data from URL...`}));
+      else if (attempt < 10) setMessages(prev => ({...prev, [`res_${id}`]: `Agent 1 summarizing facts...`}));
+      else setMessages(prev => ({...prev, [`res_${id}`]: `Agent 2 (Chief Judge) analyzing facts and finalizing ruling...`}));
+
       await fetchAllMarkets();
-      // Check if market moved out of OPEN state
       const res = await client.readContract({
         address: CONTRACT_ADDRESS,
         functionName: 'get_market',
@@ -242,7 +231,7 @@ function App() {
       }).catch(() => null);
       if (res) {
         const data = typeof res === 'string' ? JSON.parse(res) : (res.result ? JSON.parse(res.result) : {});
-        if (data.status && data.status !== 'OPEN') {
+        if (data.status && data.status !== 'OPEN' && data.status !== 'CLOSED_FOR_BETTING') {
           clearInterval(interval);
           setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
           setMarkets((prev: any) => ({ ...prev, [id]: data }));
@@ -252,7 +241,7 @@ function App() {
       if (attempt >= 40) {
         clearInterval(interval);
         setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
-        setMessages(prev => ({...prev, [`res_${id}`]: 'Timeout - GenVM network may be congested. Refresh to check.'}));
+        setMessages(prev => ({...prev, [`res_${id}`]: 'Consensus Timeout. Check network.'}));
       }
     }, 5000);
   };
@@ -267,7 +256,7 @@ function App() {
       await new Promise(r => setTimeout(r, 4000));
       await fetchAllMarkets();
     } catch(err: any) {
-      alert("Error claiming: " + err.message);
+      alert("Error: " + err.message);
     }
     setLoadingStates(prev => ({...prev, [`claim_${id}`]: false}));
   };
@@ -278,22 +267,28 @@ function App() {
   const processingMarkets = marketIds.filter(id => loadingStates[`res_${id}`]);
   const resolvedMarkets = marketIds.filter(id => markets[id] && (markets[id].status.startsWith('RESOLVED') || markets[id].status === 'FAILED'));
 
+  // Calculate global stats
+  const globalTotalPool = Object.values(markets).reduce((sum: number, market: any) => sum + (market.yes_pool || 0) + (market.no_pool || 0), 0);
+
   return (
     <div className="app-container">
-      <div className="top-nav" style={{display: 'flex', justifyContent: 'flex-end', padding: '15px 30px', gap: '15px'}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0'}}>
+        <div style={{color: 'var(--primary-color)', fontFamily: 'Rajdhani', fontSize: '1.2rem', fontWeight: 'bold'}}>
+          {/* Logo area */}
+        </div>
         <div style={{display: 'flex', gap: '15px'}}>
           {!walletConnected ? (
-            <button className="btn-primary" onClick={() => setWalletConnected(true)}>
-              🔗 Connect GenLayer Wallet
+            <button className="btn-primary" onClick={() => setWalletConnected(true)} style={{width: 'auto'}}>
+              🔗 Connect Terminal
             </button>
           ) : (
           <>
-            <button className="btn-primary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={(loadingStates.faucet || balance >= 1000) ? {background: 'rgba(0,0,0,0.5)', color: '#555', border: '1px solid #333', boxShadow: 'none'} : {background: 'linear-gradient(45deg, #00d2ff, #3a7bd5)', border: 'none', color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.3)'}}>
-              {loadingStates.faucet ? `⏳ Awaiting Consensus... (${faucetElapsed}s)` : (balance >= 1000 ? '✅ Faucet Limit Reached' : '🏦 Request 1000 G-USD')}
+            <button className="btn-primary" onClick={handleFaucet} disabled={loadingStates.faucet || balance >= 1000} style={{width: 'auto', background: (loadingStates.faucet || balance >= 1000) ? 'rgba(0,0,0,0.5)' : 'var(--primary-color)'}}>
+              {loadingStates.faucet ? `⏳ Interacting...` : (balance >= 1000 ? '✅ Faucet Limit Reached' : '🏦 Request 1000 G-USD')}
             </button>
-            <div style={{background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '8px 15px', borderRadius: '20px', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <div style={{width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%'}}></div>
-              {account.address.substring(0, 6)}... | 💰 {balance} G-USD
+            <div style={{background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '10px 20px', borderRadius: '8px', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold'}}>
+              <div style={{width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88'}}></div>
+              {account.address.substring(0, 6)}... | {balance} G-USD
             </div>
           </>
         )}
@@ -301,21 +296,30 @@ function App() {
       </div>
 
       <div className="cyber-header">
-        <h1>GEN<span className="highlight">ORACLE</span> V2</h1>
-        <p>DeFi Prediction Market Powered by GenVM AI & Objective Timing</p>
-        <p style={{fontSize: '12px', marginTop: '5px'}}>⏰ <strong style={{color: '#00d2ff'}}>Current System Time: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</strong></p>
+        <h1>GEN<span className="highlight">ORACLE</span> V3</h1>
+        <p>Next-Gen Prediction Market Powered by Multi-Agent AI Tribunal</p>
         
-        {/* WALLET SWITCHER FOR DEMO */}
+        <div style={{display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '20px'}}>
+          <div style={{background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)'}}>
+            <span style={{color: 'var(--text-muted)', fontSize: '0.9rem', display: 'block'}}>Global TVL</span>
+            <strong style={{color: 'var(--primary-color)', fontSize: '1.2rem'}}>{globalTotalPool} GL</strong>
+          </div>
+          <div style={{background: 'rgba(0,0,0,0.4)', padding: '10px 20px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)'}}>
+            <span style={{color: 'var(--text-muted)', fontSize: '0.9rem', display: 'block'}}>Total Markets</span>
+            <strong style={{color: 'var(--accent-color)', fontSize: '1.2rem'}}>{marketIds.length}</strong>
+          </div>
+        </div>
+
         <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center', gap: '15px'}}>
           <button 
             onClick={() => setActiveWallet('A')}
-            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? '#66fcf1' : 'rgba(102, 252, 241, 0.1)', color: activeWallet === 'A' ? '#000' : '#66fcf1', border: '1px solid #66fcf1', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(102,252,241,0.5)' : 'none'}}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? 'var(--primary-color)' : 'rgba(0, 210, 255, 0.1)', color: activeWallet === 'A' ? '#000' : 'var(--primary-color)', border: '1px solid var(--primary-color)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(0,210,255,0.5)' : 'none'}}
           >
             🧑 Wallet A
           </button>
           <button 
             onClick={() => setActiveWallet('B')}
-            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'B' ? '#ff3366' : 'rgba(255, 51, 102, 0.1)', color: activeWallet === 'B' ? '#fff' : '#ff3366', border: '1px solid #ff3366', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'B' ? '0 0 15px rgba(255,51,102,0.5)' : 'none'}}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'B' ? 'var(--accent-color)' : 'rgba(255, 0, 122, 0.1)', color: activeWallet === 'B' ? '#fff' : 'var(--accent-color)', border: '1px solid var(--accent-color)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'B' ? '0 0 15px rgba(255,0,122,0.5)' : 'none'}}
           >
             🕵️ Wallet B
           </button>
@@ -324,138 +328,120 @@ function App() {
 
       <div className="tab-container">
         <button className={`tab-btn ${activeTab === 'trade' ? 'active' : ''}`} onClick={() => setActiveTab('trade')}>
-          Markets & Trading
+          MARKETS & TRADING
         </button>
         <button className={`tab-btn ${activeTab === 'resolve' ? 'active' : ''}`} onClick={() => setActiveTab('resolve')}>
-          AI Resolution (Oracle)
+          AI TRIBUNAL RESOLUTION
         </button>
       </div>
 
       {activeTab === 'trade' && (
         <div className="grid-layout">
           <div className="cyber-panel">
-            <h2><span className="icon">⚡</span> Create New Market</h2>
+            <h2><span style={{color: 'var(--primary-color)'}}>⚡</span> Market Initialization</h2>
             <form onSubmit={handleCreate}>
               <div className="input-group">
                 <label>Question to Predict</label>
-                <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required />
+                <input type="text" value={marketQuestion} onChange={(e) => setMarketQuestion(e.target.value)} required placeholder="e.g. Did SpaceX launch Starship today?" />
               </div>
               <div className="input-group">
-                <label>Source of Truth (News URL) <span style={{color: '#00ff88', fontSize: '12px'}}>- OPTIONAL (Leave blank for Auto Web Search)</span></label>
-                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} placeholder="Leave blank to let AI search the web..." />
+                <label>Authoritative Source URL <span style={{color: 'var(--danger)', fontSize: '12px'}}>- REQUIRED</span></label>
+                <input type="url" value={marketUrl} onChange={(e) => setMarketUrl(e.target.value)} required placeholder="https://en.wikipedia.org/wiki/..." />
               </div>
               <div className="input-group">
-                <label>Objective Deadline (YYYY-MM-DD)</label>
+                <label>Settlement Deadline (YYYY-MM-DD)</label>
                 <input type="date" value={marketDeadline} onChange={(e) => setMarketDeadline(e.target.value)} required />
               </div>
               <button type="submit" className="btn-primary" disabled={createLoading}>
-                {createLoading ? <div className="loader"></div> : 'Initialize Market'}
+                {createLoading ? <div className="loader"></div> : 'Initialize Smart Contract'}
               </button>
             </form>
             {createMsg && <div className="result-box success">{createMsg}</div>}
 
-            <div style={{marginTop: '25px', padding: '15px', background: 'rgba(0, 210, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 210, 255, 0.2)'}}>
-              <h3 style={{fontSize: '13px', color: '#00d2ff', marginBottom: '10px'}}>🎯 Quick Test Examples (Click to fill)</h3>
-              
-              <div 
-                className="example-item" 
-                style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
-                onClick={() => {
-                  setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/2022_FIFA_World_Cup_final');
-                  setMarketDeadline('2022-12-19');
-                }}
-              >
-                <strong>Sports:</strong> Did Argentina win the 2022 FIFA World Cup?
-              </div>
-              
-              <div 
-                className="example-item" 
-                style={{marginBottom: '10px', padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
-                onClick={() => {
-                  setMarketQuestion('Is SpaceX Starship the tallest rocket ever built?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/SpaceX_Starship');
-                  setMarketDeadline('2023-01-01');
-                }}
-              >
-                <strong>Space:</strong> Is SpaceX Starship the tallest rocket ever built?
-              </div>
-
-              <div 
-                className="example-item" 
-                style={{padding: '10px', background: 'rgba(0,0,0,0.3)', cursor: 'pointer', borderRadius: '4px', fontSize: '12px'}}
-                onClick={() => {
-                  setMarketQuestion('Did Apple release the Vision Pro in 2024?');
-                  setMarketUrl('https://en.wikipedia.org/wiki/Apple_Vision_Pro');
-                  setMarketDeadline('2024-03-01');
-                }}
-              >
-                <strong>Tech:</strong> Did Apple release the Vision Pro in 2024?
-              </div>
-            </div>
-
-            <div className="cyber-panel" style={{marginTop: '30px', background: 'rgba(20, 30, 40, 0.8)', padding: '20px'}}>
-              <h2 style={{color: '#ffcc00', borderColor: '#ffcc00', fontSize: '1.4rem'}}><span className="icon">🏆</span> Global Leaderboard</h2>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                {Object.entries(allBalances)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([addr, bal], idx) => (
-                    <div key={addr} style={{display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', borderLeft: idx === 0 ? '4px solid #ffcc00' : (idx === 1 ? '4px solid #c0c0c0' : (idx === 2 ? '4px solid #cd7f32' : '4px solid #444'))}}>
-                      <span style={{color: idx === 0 ? '#ffcc00' : '#fff', fontWeight: 'bold'}}>{idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`))} {addr.substring(0,6)}...{addr.substring(addr.length-4)}</span>
-                      <span style={{color: '#00ff88', fontWeight: 'bold'}}>{bal} G-USD</span>
+            <div style={{marginTop: '30px'}}>
+              <h2 style={{color: 'var(--warning)', fontSize: '1.4rem'}}>🏆 Top Traders</h2>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>
+                {Object.entries(allBalances).length > 0 ? (
+                  Object.entries(allBalances).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([addr, bal], idx) => (
+                    <div key={addr} style={{display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', borderLeft: idx === 0 ? '4px solid #ffcc00' : '4px solid rgba(255,255,255,0.1)'}}>
+                      <span style={{color: idx === 0 ? '#ffcc00' : '#fff', fontWeight: 'bold'}}>{idx === 0 ? '🥇' : `${idx + 1}.`} {addr.substring(0,6)}...</span>
+                      <span style={{color: 'var(--success)', fontWeight: 'bold'}}>{bal} G-USD</span>
                     </div>
-                  ))}
-                {Object.keys(allBalances).length === 0 && <div style={{textAlign: 'center', color: '#888', padding: '10px'}}>No traders yet</div>}
+                  ))
+                ) : (
+                  <div style={{textAlign: 'center', color: 'var(--text-muted)'}}>No active traders</div>
+                )}
               </div>
             </div>
           </div>
 
           <div className="cyber-panel">
-            <h2><span className="icon">🎲</span> Active Markets</h2>
-            <div style={{display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap'}}>
-              <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '12px', flex: '1', minWidth: '120px'}}>🔄 Refresh Status</button>
-              <button onClick={() => { if(window.confirm('Clear all market history?')) { setMarketIds([]); setMarkets({}); localStorage.removeItem('genOracleMarkets'); }}} style={{padding: '8px 15px', fontSize: '12px', flex: '1', minWidth: '120px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer'}}>🗑️ Clear History</button>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px'}}>
+              <h2 style={{borderBottom: 'none', padding: 0, margin: 0}}><span style={{color: 'var(--accent-color)'}}>🎲</span> Order Book</h2>
+              <button className="btn-primary" onClick={fetchAllMarkets} style={{padding: '8px 15px', fontSize: '0.85rem', width: 'auto'}}>🔄 Sync Node</button>
             </div>
-            {marketIds.map(id => {
-              const market = markets[id];
-              if (!market) return null;
-              
-              const myYes = market.yes_positions?.[account.address] || 0;
-              const myNo = market.no_positions?.[account.address] || 0;
+            
+            <div style={{display: 'grid', gap: '20px'}}>
+              {marketIds.map(id => {
+                const market = markets[id];
+                if (!market) return null;
+                
+                const myYes = market.yes_positions?.[account.address.toLowerCase()] || 0;
+                const myNo = market.no_positions?.[account.address.toLowerCase()] || 0;
+                
+                const totalPool = market.yes_pool + market.no_pool;
+                const yesPercent = totalPool > 0 ? Math.round((market.yes_pool / totalPool) * 100) : 50;
 
-              return (
-                <div key={id} className="market-card" style={{marginBottom: '20px'}}>
-                  <h3 style={{fontSize: '14px', borderBottom: '1px solid #333', paddingBottom: '10px'}}>{market.question}</h3>
-                  <div className="pool-info" style={{fontSize: '12px', marginTop: '10px'}}>
-                    <span>Deadline: {market.deadline}</span>
-                    <span>YES Pool: {market.yes_pool} GL</span>
-                    <span>NO Pool: {market.no_pool} GL</span>
-                    <span>Status: {market.status}</span>
-                  </div>
-                  {(myYes > 0 || myNo > 0) && (
-                    <div style={{color: '#00d2ff', fontSize: '12px', marginTop: '5px'}}>Your Positions: YES ({myYes}) / NO ({myNo})</div>
-                  )}
-                  
-                  {market.status === 'OPEN' ? (
-                      <form>
-                        <div className="input-group" style={{marginTop: '10px'}}>
-                          <input type="text" value={betAmounts[id] !== undefined ? betAmounts[id] : "100"} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: e.target.value.replace(/[^0-9]/g, '')}))} placeholder="Amount" />
-                        </div>
-                        <div className="bet-buttons">
-                          <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BET YES</button>
-                          <button type="button" className="btn-no" onClick={(e) => handleBet(e, id, false)} disabled={loadingStates[`bet_${id}`]}>BET NO</button>
-                        </div>
-                      </form>
-                  ) : (
-                    <div className="result-box glow" style={{marginTop: '10px'}}>
-                      {market.status === 'CLOSED_FOR_BETTING' ? '🔒 Betting Closed. Awaiting AI Resolution.' : `Resolved: ${market.status}`}
+                return (
+                  <div key={id} className="market-card">
+                    <h3>{market.question}</h3>
+                    <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '15px', wordBreak: 'break-all'}}>{market.source_url}</div>
+                    
+                    {/* Visual Progress Bar */}
+                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '5px'}}>
+                      <span style={{color: 'var(--success)'}}>YES {yesPercent}%</span>
+                      <span style={{color: 'var(--danger)'}}>NO {100 - yesPercent}%</span>
                     </div>
-                  )}
-                  {messages[`bet_${id}`] && <div className="result-box">{messages[`bet_${id}`]}</div>}
-                </div>
-              )
-            })}
+                    <div style={{height: '6px', background: 'var(--danger)', borderRadius: '3px', display: 'flex', overflow: 'hidden', marginBottom: '15px'}}>
+                      <div style={{width: `${yesPercent}%`, background: 'var(--success)', height: '100%'}}></div>
+                    </div>
+
+                    <div className="pool-info">
+                      <span>Total Pool: <strong>{totalPool} GL</strong></span>
+                      <span>Status: <strong style={{color: market.status === 'OPEN' ? 'var(--success)' : 'var(--warning)'}}>{market.status}</strong></span>
+                    </div>
+                    
+                    {(myYes > 0 || myNo > 0) && (
+                      <div style={{padding: '10px', background: 'rgba(0, 210, 255, 0.1)', borderRadius: '8px', border: '1px solid rgba(0, 210, 255, 0.2)', marginBottom: '15px'}}>
+                        <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Your Position:</span>
+                        <div style={{fontWeight: 'bold', display: 'flex', gap: '15px', marginTop: '5px'}}>
+                          <span style={{color: 'var(--success)'}}>YES: {myYes}</span>
+                          <span style={{color: 'var(--danger)'}}>NO: {myNo}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {market.status === 'OPEN' ? (
+                        <form>
+                          <div className="input-group" style={{margin: '0'}}>
+                            <input type="text" value={betAmounts[id] !== undefined ? betAmounts[id] : "100"} onChange={(e) => setBetAmounts(prev => ({...prev, [id]: Number(e.target.value.replace(/[^0-9]/g, ''))}))} placeholder="Amount in G-USD" />
+                          </div>
+                          <div className="bet-buttons">
+                            <button type="button" className="btn-yes" onClick={(e) => handleBet(e, id, true)} disabled={loadingStates[`bet_${id}`]}>BUY YES</button>
+                            <button type="button" className="btn-no" onClick={(e) => handleBet(e, id, false)} disabled={loadingStates[`bet_${id}`]}>BUY NO</button>
+                          </div>
+                        </form>
+                    ) : (
+                      <div className="result-box glow">
+                        {market.status === 'CLOSED_FOR_BETTING' ? '🔒 Market Frozen. Awaiting AI Tribunal.' : `Final Resolution: ${market.status}`}
+                      </div>
+                    )}
+                    {messages[`bet_${id}`] && <div className="result-box">{messages[`bet_${id}`]}</div>}
+                  </div>
+                )
+              })}
+              {marketIds.length === 0 && <div style={{textAlign: 'center', color: 'var(--text-muted)'}}>No Markets Found. Initialize one.</div>}
+            </div>
           </div>
         </div>
       )}
@@ -463,20 +449,19 @@ function App() {
       {activeTab === 'resolve' && (
         <div className="kanban-layout">
           <div className="kanban-col">
-            <h2>⏳ Pending AI Analysis</h2>
+            <h2>⏳ Pending Analysis</h2>
             {pendingMarkets.map(id => (
               <div key={id} className="market-card">
                 <h3>{markets[id].question}</h3>
-                <div style={{fontSize: '11px', color: '#aaa', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
-                <div style={{fontSize: '11px', color: '#ff3366', marginBottom: '12px'}}>Deadline: {markets[id].deadline}</div>
+                <div style={{fontSize: '11px', color: 'var(--text-muted)', margin: '8px 0', wordBreak: 'break-all'}}>{markets[id].source_url}</div>
                 
                 {markets[id].status === 'OPEN' ? (
-                  <button type="button" className="btn-resolve" onClick={(e) => handleCloseBetting(e, id)} disabled={loadingStates[`close_${id}`]} style={{background: '#ffaa00'}}>
-                    {loadingStates[`close_${id}`] ? 'Closing...' : '🔒 Close Betting'}
+                  <button type="button" className="btn-primary" onClick={(e) => handleCloseBetting(e, id)} disabled={loadingStates[`close_${id}`]} style={{background: 'var(--warning)', marginTop: '15px'}}>
+                    {loadingStates[`close_${id}`] ? 'Locking Contract...' : '🔒 Close Betting'}
                   </button>
                 ) : (
-                  <button type="button" className="btn-resolve" onClick={(e) => handleResolve(e, id)}>
-                    🤖 Trigger GenLayer AI
+                  <button type="button" className="btn-primary" onClick={(e) => handleResolve(e, id)} style={{marginTop: '15px'}}>
+                    🤖 Summon Multi-Agent Tribunal
                   </button>
                 )}
               </div>
@@ -484,34 +469,37 @@ function App() {
           </div>
           
           <div className="kanban-col">
-            <h2>🧠 GenVM Processing</h2>
+            <h2>🧠 Tribunal Processing</h2>
             {processingMarkets.map(id => (
               <div key={id} className="market-card processing">
                 <div className="ai-scanning"><div className="scan-line"></div></div>
                 <h3>{markets[id].question}</h3>
-                <p style={{color: '#ffd700', fontSize:'12px', marginTop:'10px'}}>{messages[`res_${id}`]}</p>
+                <div style={{background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '8px', marginTop: '15px', border: '1px solid var(--accent-color)'}}>
+                  <p style={{color: '#fff', fontSize:'0.9rem', fontFamily: 'Rajdhani', fontWeight: 'bold'}}>> {messages[`res_${id}`]}</p>
+                </div>
               </div>
             ))}
           </div>
 
           <div className="kanban-col">
-            <h2>✅ Resolved Markets</h2>
+            <h2>✅ Final Rulings</h2>
             {resolvedMarkets.map(id => (
-              <div key={id} className="market-card success glow">
+              <div key={id} className="market-card" style={{borderColor: markets[id].status === 'FAILED' ? 'var(--warning)' : 'var(--success)', boxShadow: 'none'}}>
                 <h3 style={{fontSize: '13px'}}>{markets[id].question}</h3>
-                <h2 style={{color: '#00ff88', textAlign: 'center', margin: '15px 0'}}>{markets[id].status}</h2>
-                {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
-                  <button className="btn-primary" style={{width: '100%', background: markets[id].status === 'FAILED' ? '#ffaa00' : '#ff007f'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
-                    {loadingStates[`claim_${id}`] ? 'Claiming...' : (markets[id].status === 'FAILED' ? '🔁 Claim Refund' : '💰 Claim Payout')}
+                <h2 style={{color: markets[id].status === 'FAILED' ? 'var(--warning)' : 'var(--success)', textAlign: 'center', margin: '20px 0', fontSize: '1.5rem'}}>{markets[id].status}</h2>
+                
+                {((markets[id].status === 'RESOLVED_YES' && (markets[id].yes_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'FAILED' && (markets[id].yes_positions?.[account.address.toLowerCase()] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0))) && (
+                  <button className="btn-primary" style={{width: '100%', background: markets[id].status === 'FAILED' ? 'var(--warning)' : 'var(--success)'}} onClick={(e) => handleClaim(e, id)} disabled={loadingStates[`claim_${id}`]}>
+                    {loadingStates[`claim_${id}`] ? 'Processing Tx...' : (markets[id].status === 'FAILED' ? '🔁 Claim Refund' : '💰 Claim Payout')}
                   </button>
                 )}
                 
-                {((markets[id].status === 'RESOLVED_YES' && (markets[id].no_positions?.[account.address] > 0 || markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
-                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address] > 0 || markets[id].yes_positions?.[account.address.toLowerCase()] > 0))) && (
-                  <div style={{color: '#ff4444', textAlign: 'center', marginTop: '10px', fontSize: '14px', fontWeight: 'bold'}}>
-                    ❌ Prediction failed. No payout.
+                {((markets[id].status === 'RESOLVED_YES' && (markets[id].no_positions?.[account.address.toLowerCase()] > 0)) ||
+                  (markets[id].status === 'RESOLVED_NO' && (markets[id].yes_positions?.[account.address.toLowerCase()] > 0))) && (
+                  <div style={{color: 'var(--danger)', textAlign: 'center', marginTop: '15px', fontSize: '0.9rem', fontWeight: 'bold'}}>
+                    ❌ Prediction incorrect. Liquidity seized.
                   </div>
                 )}
               </div>

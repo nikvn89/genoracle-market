@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0x6b391115D9D05EEb634363A36f0EDaE6D1bB6dD9"; // V18 (AI Time-Lock)
+const CONTRACT_ADDRESS = "0x28Dd0bDD476F5B42035Ae4D303902c4E1aBA8ba6"; // V19 (AI Time-Lock, Fix Node State Wipe)
 
 function App() {
   const [activeTab, setActiveTab] = useState<'trade' | 'resolve'>('trade');

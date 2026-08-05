@@ -313,13 +313,13 @@ function App() {
         <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center', gap: '15px'}}>
           <button 
             onClick={() => setActiveWallet('A')}
-            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? 'var(--primary-color)' : 'rgba(0, 210, 255, 0.1)', color: activeWallet === 'A' ? '#000' : 'var(--primary-color)', border: '1px solid var(--primary-color)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(0,210,255,0.5)' : 'none'}}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'A' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)', color: activeWallet === 'A' ? '#000' : '#fff', border: activeWallet === 'A' ? '1px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'A' ? '0 0 15px rgba(0,210,255,0.5)' : 'none'}}
           >
             🧑 Wallet A
           </button>
           <button 
             onClick={() => setActiveWallet('B')}
-            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'B' ? 'var(--accent-color)' : 'rgba(255, 0, 122, 0.1)', color: activeWallet === 'B' ? '#fff' : 'var(--accent-color)', border: '1px solid var(--accent-color)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'B' ? '0 0 15px rgba(255,0,122,0.5)' : 'none'}}
+            style={{padding: '8px 25px', borderRadius: '25px', background: activeWallet === 'B' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)', color: activeWallet === 'B' ? '#fff' : '#fff', border: activeWallet === 'B' ? '1px solid var(--accent-color)' : '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'Rajdhani', fontSize: '1.1rem', transition: '0.3s', boxShadow: activeWallet === 'B' ? '0 0 15px rgba(255,0,122,0.5)' : 'none'}}
           >
             🕵️ Wallet B
           </button>

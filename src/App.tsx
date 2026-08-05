@@ -358,6 +358,34 @@ function App() {
             </form>
             {createMsg && <div className="result-box success">{createMsg}</div>}
 
+            <div style={{marginTop: '25px'}}>
+              <h3 style={{fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '10px'}}>Quick Test Examples (Click to fill)</h3>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setMarketQuestion("Will it rain in London tomorrow?");
+                    setMarketUrl("https://weather.com/en-GB/weather/today/l/UKXX0085:1:UK");
+                    setMarketDeadline("2026-12-31");
+                  }}
+                  style={{textAlign: 'left', padding: '10px', background: 'rgba(0, 210, 255, 0.05)', border: '1px dashed var(--primary-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
+                >
+                  🌧️ Weather: Rain in London?
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setMarketQuestion("Is Bitcoin price above $100k?");
+                    setMarketUrl("https://coinmarketcap.com/currencies/bitcoin/");
+                    setMarketDeadline("2026-12-31");
+                  }}
+                  style={{textAlign: 'left', padding: '10px', background: 'rgba(255, 0, 122, 0.05)', border: '1px dashed var(--accent-color)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem'}}
+                >
+                  📈 Crypto: BTC > $100k?
+                </button>
+              </div>
+            </div>
+
             <div style={{marginTop: '30px'}}>
               <h2 style={{color: 'var(--warning)', fontSize: '1.4rem'}}>🏆 Top Traders</h2>
               <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>

@@ -79,13 +79,8 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Market not found")
         if markets[market_id]["status"] != "OPEN":
             raise gl.vm.UserError("Market is closed for betting.")
-
-        # Enforce deadline: no bets accepted after the settlement deadline
-        deadline = markets[market_id].get("deadline", "")
-        if deadline:
-            today_str = date.today().isoformat()
-            if today_str > deadline:
-                raise gl.vm.UserError(f"Betting closed. Settlement deadline was {deadline}.")
+        # Note: Betting period is controlled by close_betting(), not by deadline.
+        # Deadline is only enforced at resolution time (resolve_market).
             
         sender = str(gl.message.sender_address).lower()
         user_addr_key = user_addr.lower()
@@ -280,18 +275,30 @@ class PredictionMarketContract(gl.Contract):
         user_yes_pos = market["yes_positions"].get(user_addr_key, 0)
         user_no_pos = market["no_positions"].get(user_addr_key, 0)
         
-        # PROPORTIONAL INTEGER MATH
+        # PROPORTIONAL INTEGER MATH with division-by-zero guard
         if status == "RESOLVED_YES":
-            if user_yes_pos == 0:
+            if yes_pool == 0:
+                # Edge case: nobody bet YES but AI said YES — refund everyone
+                payout = user_yes_pos + user_no_pos
+                market["yes_positions"][user_addr_key] = 0
+                market["no_positions"][user_addr_key] = 0
+            elif user_yes_pos == 0:
                 raise gl.vm.UserError("No winning position")
-            payout = (user_yes_pos * total_pool) // yes_pool
-            market["yes_positions"][user_addr_key] = 0
+            else:
+                payout = (user_yes_pos * total_pool) // yes_pool
+                market["yes_positions"][user_addr_key] = 0
             
         elif status == "RESOLVED_NO":
-            if user_no_pos == 0:
+            if no_pool == 0:
+                # Edge case: nobody bet NO but AI said NO — refund everyone
+                payout = user_yes_pos + user_no_pos
+                market["yes_positions"][user_addr_key] = 0
+                market["no_positions"][user_addr_key] = 0
+            elif user_no_pos == 0:
                 raise gl.vm.UserError("No winning position")
-            payout = (user_no_pos * total_pool) // no_pool
-            market["no_positions"][user_addr_key] = 0
+            else:
+                payout = (user_no_pos * total_pool) // no_pool
+                market["no_positions"][user_addr_key] = 0
             
         elif status == "FAILED":
             if user_yes_pos == 0 and user_no_pos == 0:

@@ -6,8 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0xDa43e586BA0FA02Fc3AcbF2FB15B790C5c596dD0"; // V23 (Real Deadline Enforcement)
-const EXPLORER_BASE = "https://explorer-studio.genlayer.com/tx/";
+const CONTRACT_ADDRESS = "0xbDEcf0f700E9e5F0e6e621fcb61022E7D15c8AC6"; // V24 (Div-by-zero fix + clean betting logic)
 
 // Helper: days until/since deadline
 function getDeadlineStatus(deadline: string) {
@@ -47,12 +46,13 @@ function App() {
   const [betAmounts, setBetAmounts] = useState<{[key: string]: number}>({});
   const [loadingStates, setLoadingStates] = useState<{[key: string]: boolean}>({});
   const [messages, setMessages] = useState<{[key: string]: string}>({});
-  const [txHashes, setTxHashes] = useState<{[key: string]: string}>({});
   const [allBalances, setAllBalances] = useState<{[key: string]: number}>({});
   const [balance, setBalance] = useState(0);
+  const [domainManual, setDomainManual] = useState(false);
 
-  // Smart domain suggestion based on question
+  // Smart domain suggestion (only when user hasn't manually picked one)
   useEffect(() => {
+    if (domainManual) return;
     const q = marketQuestion.toLowerCase();
     if (q.includes('bitcoin') || q.includes('btc') || q.includes('eth') || q.includes('crypto') || q.includes('price') || q.includes('coin')) {
       setMarketDomain('coinmarketcap.com');
@@ -65,7 +65,7 @@ function App() {
     } else if (q.length > 5) {
       setMarketDomain('bbc.com');
     }
-  }, [marketQuestion]);
+  }, [marketQuestion, domainManual]);
   
   useEffect(() => {
     fetchAllMarkets();
@@ -255,7 +255,10 @@ function App() {
     
     client.writeContract({
       account, address: CONTRACT_ADDRESS, functionName: 'resolve_market', args: [id]
-    }).catch(console.error);
+    }).catch((err: any) => {
+      setLoadingStates(prev => ({...prev, [`res_${id}`]: false}));
+      setMessages(prev => ({...prev, [`res_${id}`]: '❌ ' + (err.message || 'Transaction failed')}));
+    });
 
     let attempt = 0;
     const interval = setInterval(async () => {
@@ -436,7 +439,7 @@ function App() {
               </div>
               <div className="input-group">
                 <label>Authoritative Domain <span style={{color: 'var(--primary-color)', fontSize: '12px'}}>— OPTIONAL</span></label>
-                <select value={marketDomain} onChange={e => setMarketDomain(e.target.value)}
+                <select value={marketDomain} onChange={e => { setMarketDomain(e.target.value); setDomainManual(true); }}
                   style={{padding: '12px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', fontSize: '1rem', width: '100%'}}>
                   <option value="">Open Web Search (Auto-Detect)</option>
                   <option value="wikipedia.org">wikipedia.org — General Knowledge</option>
@@ -544,8 +547,8 @@ function App() {
                       </div>
                     )}
                     
-                    {/* Betting UI */}
-                    {market.status === 'OPEN' && (deadlineDays === null || deadlineDays > 0) ? (
+                    {/* Betting UI — controlled by close_betting(), not deadline */}
+                    {market.status === 'OPEN' ? (
                       <div>
                         <div className="input-group" style={{margin: '0 0 10px'}}>
                           <input type="text" value={betAmounts[id] !== undefined ? betAmounts[id] : '100'}
@@ -561,23 +564,13 @@ function App() {
                           </button>
                         </div>
                       </div>
-                    ) : market.status === 'OPEN' && deadlineDays !== null && deadlineDays <= 0 ? (
-                      <div className="result-box" style={{color: 'var(--warning)', borderLeftColor: 'var(--warning)'}}>
-                        ⛔ Betting period has ended. Go to Tribunal to resolve.
-                      </div>
-                    ) : market.status !== 'OPEN' ? (
+                    ) : (
                       <div className="result-box glow">
                         {market.status === 'CLOSED_FOR_BETTING' ? '🔒 Locked. Awaiting AI Tribunal.' : `Final: ${market.status}`}
                       </div>
-                    ) : null}
+                    )}
                     
                     {messages[`bet_${id}`] && <div className="result-box" style={{marginTop: '8px'}}>{messages[`bet_${id}`]}</div>}
-                    {txHashes[`bet_${id}`] && (
-                      <a href={`${EXPLORER_BASE}${txHashes[`bet_${id}`]}`} target="_blank" rel="noreferrer"
-                        style={{display: 'block', marginTop: '6px', fontSize: '11px', color: 'var(--primary-color)'}}>
-                        🔗 View on Explorer →
-                      </a>
-                    )}
                   </div>
                 );
               })}

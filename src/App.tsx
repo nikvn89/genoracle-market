@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0xbDEcf0f700E9e5F0e6e621fcb61022E7D15c8AC6"; // V24 (Div-by-zero fix + clean betting logic)
+const CONTRACT_ADDRESS = "0x2Bc86A7851d384f722Eb7D4137eDa563AC13023c"; // V25 (search fix: no site: prefix)
 
 // Helper: days until/since deadline
 function getDeadlineStatus(deadline: string) {

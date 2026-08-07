@@ -139,12 +139,20 @@ class PredictionMarketContract(gl.Contract):
             try:
                 query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
                 
+                # Build search URL — use domain as keyword hint, NOT site: operator
+                # (site: causes DuckDuckGo to timeout on GenLayer validators)
                 if domain:
-                    search_url = f"https://html.duckduckgo.com/html/?q=site:{domain}+{query}"
+                    search_url = f"https://html.duckduckgo.com/html/?q={domain}+{query}"
                 else:
                     search_url = f"https://html.duckduckgo.com/html/?q={query}"
                     
-                search_text = gl.nondet.web.render(search_url, mode="text")
+                try:
+                    search_text = gl.nondet.web.render(search_url, mode="text")
+                except Exception:
+                    # Fallback: retry without domain restriction
+                    fallback_url = f"https://html.duckduckgo.com/html/?q={query}"
+                    search_text = gl.nondet.web.render(fallback_url, mode="text")
+                    
                 if len(search_text) > 4000:
                     search_text = search_text[:4000]
                     

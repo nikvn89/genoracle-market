@@ -2,7 +2,7 @@ import { createClient, createAccount } from 'genlayer-js';
 import { studionet } from 'genlayer-js/chains';
 
 const client = createClient({ chain: studionet });
-const CONTRACT_ADDRESS = "0xbDEcf0f700E9e5F0e6e621fcb61022E7D15c8AC6"; // V24
+const CONTRACT_ADDRESS = "0x2Bc86A7851d384f722Eb7D4137eDa563AC13023c"; // V25
 
 // Two separate accounts for real 2-sided pools
 const walletA = createAccount('0x72bf6e67319555b11f47754b6eba01ce6d67fa377ce6c62437bb8677d346fd28');

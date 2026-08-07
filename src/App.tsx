@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0x2Bc86A7851d384f722Eb7D4137eDa563AC13023c"; // V25 (search fix: no site: prefix)
+const CONTRACT_ADDRESS = "0x5CCe607264EEEB838667733AD1E8718669414fFC"; // V26 (Wikipedia direct fetch)
 
 // Helper: days until/since deadline
 function getDeadlineStatus(deadline: string) {
@@ -438,15 +438,13 @@ function App() {
                 <input type="text" value={marketQuestion} onChange={e => setMarketQuestion(e.target.value)} required placeholder="e.g. Will SpaceX land on Mars before 2030?" />
               </div>
               <div className="input-group">
-                <label>Authoritative Domain <span style={{color: 'var(--primary-color)', fontSize: '12px'}}>— OPTIONAL</span></label>
+                <label>Source Hint <span style={{color: 'var(--primary-color)', fontSize: '12px'}}>— AI uses Wikipedia by default</span></label>
                 <select value={marketDomain} onChange={e => { setMarketDomain(e.target.value); setDomainManual(true); }}
                   style={{padding: '12px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', fontSize: '1rem', width: '100%'}}>
-                  <option value="">Open Web Search (Auto-Detect)</option>
+                  <option value="">🤖 AI Auto-Detect (Wikipedia)</option>
                   <option value="wikipedia.org">wikipedia.org — General Knowledge</option>
                   <option value="bbc.com">bbc.com — Global News</option>
                   <option value="reuters.com">reuters.com — Politics & Economics</option>
-                  <option value="apnews.com">apnews.com — Breaking News</option>
-                  <option value="coinmarketcap.com">coinmarketcap.com — Crypto</option>
                 </select>
               </div>
               <div className="input-group">
@@ -458,6 +456,43 @@ function App() {
               </button>
             </form>
             {createMsg && <div className={`result-box ${createMsg.startsWith('✅') ? 'success' : ''}`}>{createMsg}</div>}
+
+            {/* Quick Fill Presets */}
+            <div style={{marginTop: '25px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px'}}>
+              <h3 style={{color: 'var(--accent-color)', fontSize: '1rem', marginBottom: '12px'}}>📋 Quick Fill Examples</h3>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                <button type="button" onClick={() => {
+                  setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
+                  setMarketDeadline('2022-12-31');
+                  setMarketDomain('');
+                  setDomainManual(false);
+                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
+                }} style={{padding: '10px 14px', background: 'rgba(0,210,255,0.08)', border: '1px solid rgba(0,210,255,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
+                  🏆 <strong>Argentina World Cup 2022</strong><br/>
+                  <span style={{color: 'var(--success)', fontSize: '11px'}}>Past event → AI resolves YES → Winners get paid</span>
+                </button>
+                <button type="button" onClick={() => {
+                  setMarketQuestion('Did the 2024 Summer Olympics take place in Paris, France?');
+                  setMarketDeadline('2024-09-30');
+                  setMarketDomain('');
+                  setDomainManual(false);
+                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
+                }} style={{padding: '10px 14px', background: 'rgba(0,210,255,0.08)', border: '1px solid rgba(0,210,255,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
+                  🏅 <strong>Paris Olympics 2024</strong><br/>
+                  <span style={{color: 'var(--success)', fontSize: '11px'}}>Past event → AI resolves YES → Test payout math</span>
+                </button>
+                <button type="button" onClick={() => {
+                  setMarketQuestion('Will the 2028 Summer Olympics be held in Los Angeles?');
+                  setMarketDeadline('2028-09-30');
+                  setMarketDomain('');
+                  setDomainManual(false);
+                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
+                }} style={{padding: '10px 14px', background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
+                  🚀 <strong>LA Olympics 2028</strong><br/>
+                  <span style={{color: 'var(--warning)', fontSize: '11px'}}>Future event → Funds LOCKED until deadline → Test TOO_EARLY</span>
+                </button>
+              </div>
+            </div>
 
             {/* Leaderboard */}
             <div style={{marginTop: '35px'}}>

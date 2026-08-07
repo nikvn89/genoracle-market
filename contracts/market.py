@@ -130,65 +130,75 @@ class PredictionMarketContract(gl.Contract):
         domain = market.get("authoritative_domain", "")
 
         def leader_fn() -> str:
-            # Agent 1: The Search Strategist
-            query_prompt = f"""
-            You are an expert search strategist. The user wants to find the answer to this question: "{market["question"]}"
-            Generate a precise search query to find the exact fact, strongly including any dates, times, or specific entities mentioned.
-            Output ONLY the query string, nothing else. Do not use quotes.
+            # Agent 1: The URL Strategist — constructs a direct Wikipedia URL
+            url_prompt = f"""
+            I need to fact-check: "{market["question"]}"
+            
+            What is the single best English Wikipedia article URL to verify this?
+            Format: https://en.wikipedia.org/wiki/Article_Title
+            Use underscores for spaces. Choose the most specific article.
+            
+            Examples:
+            - "Did Argentina win the 2022 FIFA World Cup?" -> https://en.wikipedia.org/wiki/2022_FIFA_World_Cup
+            - "Did Trump survive an assassination attempt in July 2024?" -> https://en.wikipedia.org/wiki/Assassination_attempts_on_Donald_Trump
+            - "Did the Paris 2024 Olympics take place?" -> https://en.wikipedia.org/wiki/2024_Summer_Olympics
+            
+            Output ONLY the URL:
             """
             try:
-                query = gl.nondet.exec_prompt(query_prompt).strip().replace(" ", "+")
+                wiki_url = gl.nondet.exec_prompt(url_prompt).strip().split("\n")[0].strip()
                 
-                # Build search URL — use domain as keyword hint, NOT site: operator
-                # (site: causes DuckDuckGo to timeout on GenLayer validators)
-                if domain:
-                    search_url = f"https://html.duckduckgo.com/html/?q={domain}+{query}"
-                else:
-                    search_url = f"https://html.duckduckgo.com/html/?q={query}"
-                    
+                if "wikipedia.org" not in wiki_url:
+                    clean = wiki_url.replace(" ", "_")
+                    wiki_url = f"https://en.wikipedia.org/wiki/{clean}"
+                
+                source_text = ""
                 try:
-                    search_text = gl.nondet.web.render(search_url, mode="text")
+                    source_text = gl.nondet.web.render(wiki_url, mode="text")
                 except Exception:
-                    # Fallback: retry without domain restriction
-                    fallback_url = f"https://html.duckduckgo.com/html/?q={query}"
-                    search_text = gl.nondet.web.render(fallback_url, mode="text")
-                    
-                if len(search_text) > 4000:
-                    search_text = search_text[:4000]
+                    pass
+                
+                if not source_text or len(source_text) < 200:
+                    q = market["question"].replace(" ", "+")
+                    fallback_url = f"https://en.wikipedia.org/w/index.php?search={q}"
+                    source_text = gl.nondet.web.render(fallback_url, mode="text")
+                
+                if len(source_text) > 5000:
+                    source_text = source_text[:5000]
                     
             except Exception as e:
-                return json.dumps({"decision": "UNKNOWN", "reason": f"Web Search failed: {str(e)}"})
+                return json.dumps({"decision": "UNKNOWN", "reason": f"Wikipedia fetch failed: {str(e)}"})
                 
-            # Agent 2: The Researcher
+            # Agent 2: The Fact Extractor
             research_prompt = f"""
-            You are a meticulous Data Researcher.
-            Analyze the following search engine results and extract only the factual events related to this question: "{market["question"]}"
-            Do not make a final decision, just list the facts found in the snippets.
+            You are a meticulous fact-checker.
+            Read the following Wikipedia content and extract ONLY the facts relevant to: "{market["question"]}"
+            List each fact on its own line. If no relevant info found, say "NO RELEVANT INFORMATION."
             
-            Search Results:
-            {search_text}
+            Wikipedia Content:
+            {source_text}
             """
             
             try:
                 research_report = gl.nondet.exec_prompt(research_prompt)
             except Exception:
-                return json.dumps({"decision": "UNKNOWN", "reason": "Researcher Agent failed"})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Fact Extractor failed"})
                 
             # Agent 3: The Chief Judge
             judge_prompt = f"""
             You are the Chief Judge of an Oracle Protocol.
-            Based strictly on the following Research Report, answer the question: "{market["question"]}"
+            Based strictly on the following Research Report, answer: "{market["question"]}"
             
             Research Report:
             {research_report}
             
-            RULES for Output:
-            1. If the facts in the report DEFINITIVELY CONFIRM the event occurred, output exactly: YES
-            2. If the facts in the report DEFINITIVELY DENY the event occurred, output exactly: NO
-            3. If the event has not happened yet (in the future), output exactly: TOO_EARLY
-            4. If the report says "no information", "search failed", "Captcha", or if the facts are missing/ambiguous, output exactly: UNKNOWN
+            RULES:
+            1. If facts DEFINITIVELY CONFIRM the event occurred -> YES
+            2. If facts DEFINITIVELY DENY the event occurred -> NO
+            3. If the event is in the future / not yet happened -> TOO_EARLY
+            4. If no information or ambiguous -> UNKNOWN
             
-            Output ONLY a single word from the options above. Do not explain.
+            Output ONLY one word: YES, NO, TOO_EARLY, or UNKNOWN
             """
             
             try:
@@ -199,7 +209,7 @@ class PredictionMarketContract(gl.Contract):
                 else: decision = "UNKNOWN"
                 return json.dumps({"decision": decision, "research": research_report})
             except Exception:
-                return json.dumps({"decision": "UNKNOWN", "reason": "Judge Agent failed parsing", "research": ""})
+                return json.dumps({"decision": "UNKNOWN", "reason": "Judge failed", "research": ""})
 
         def validator_fn(leader_res) -> bool:
             try:

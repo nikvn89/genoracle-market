@@ -644,12 +644,29 @@ function App() {
                     style={{background: 'var(--warning)', marginTop: '5px'}}>
                     {loadingStates[`close_${id}`] ? 'Locking...' : '🔒 Close Betting'}
                   </button>
-                ) : (
-                  <button className="btn-primary" onClick={() => handleResolve(id)}
-                    style={{marginTop: '5px'}}>
-                    🤖 Summon Autonomous Tribunal
-                  </button>
-                )}
+                ) : (() => {
+                  const dl = markets[id].deadline ? getDeadlineStatus(markets[id].deadline) : 0;
+                  return dl !== null && dl > 0 ? (
+                    <div style={{marginTop: '10px'}}>
+                      <div style={{background: 'rgba(255,170,0,0.15)', border: '1px solid var(--warning)', borderRadius: '8px', padding: '12px', textAlign: 'center'}}>
+                        <div style={{fontSize: '1.5rem', marginBottom: '6px'}}>🔐</div>
+                        <div style={{color: 'var(--warning)', fontWeight: 'bold', fontSize: '0.9rem'}}>FUNDS LOCKED</div>
+                        <div style={{color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px'}}>
+                          Settlement available in <strong style={{color: '#fff'}}>{dl} days</strong><br/>
+                          Deadline: {markets[id].deadline}
+                        </div>
+                      </div>
+                      <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '8px', textAlign: 'center'}}>
+                        ⛔ AI Tribunal cannot resolve until deadline passes. All positions are frozen.
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="btn-primary" onClick={() => handleResolve(id)}
+                      style={{marginTop: '5px'}}>
+                      🤖 Summon Autonomous Tribunal
+                    </button>
+                  );
+                })()}
               </div>
             ))}
           </div>

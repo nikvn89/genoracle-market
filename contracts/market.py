@@ -26,7 +26,9 @@ class PredictionMarketContract(gl.Contract):
             raise gl.vm.UserError("Can only faucet to your own address")
             
         if user_lower in claimed:
-            raise gl.vm.UserError("Faucet already claimed. One time only per address.")
+            # Allow re-claim only when balance is critically low (for demo/testing)
+            if balances.get(user_lower, 0) >= 200:
+                raise gl.vm.UserError("Faucet already claimed. Re-claim available when balance drops below 200 G-USD.")
             
         current = balances.get(user_lower, 0)
         balances[user_lower] = current + 1000

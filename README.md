@@ -3,7 +3,7 @@
 A fully on-chain prediction market where outcomes are resolved autonomously by GenLayer's Intelligent Contracts. No human oracles. No off-chain servers. The AI reads real-world sources (Wikipedia) and reaches deterministic consensus across 5 validators.
 
 **Live Demo:** https://genoracle-market-nik.vercel.app/
-**Smart Contract (GenVM StudioNet):** `0xEb75574c63e04be1F32560f64Ca7F7295f276f40`
+**Smart Contract (GenVM StudioNet):** `0x65581AA3AB5d064571F8EF48D74451Be1cFF9a68`
 **GitHub:** https://github.com/nikvn89/genoracle-market
 
 ---
@@ -20,7 +20,7 @@ A fully on-chain prediction market where outcomes are resolved autonomously by G
 | **Deadline Enforcement** | `resolve_market()` checks `date.today() > deadline` — blocks resolution before event closes |
 | **Funds Lock** | `CLOSED_FOR_BETTING` status freezes all positions until AI resolves |
 | **Sender Verification** | `place_bet()` and `claim_winnings()` verify `gl.message.sender_address == user_addr` |
-| **One-Time Faucet** | `claimed_faucet` list prevents double-claiming |
+| **One-Time Faucet** | `claimed_faucet` prevents double-claiming. Re-claim allowed if balance drops below 200 G-USD |
 | **FAILED Refunds** | If AI returns UNKNOWN/cannot resolve → 100% refund to all participants |
 | **Division-by-Zero Guard** | If winning pool = 0, falls back to full refund |
 

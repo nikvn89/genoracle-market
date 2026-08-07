@@ -2,7 +2,7 @@
 
 A fully decentralized prediction market where outcomes are resolved entirely by GenLayer's Intelligent Contracts (GenVM). It eliminates the need for slow, manual, or biased human oracles by utilizing LLMs to read real-world news and deterministically resolve markets on-chain.
 
-**Smart Contract (GenVM StudioNet):** `0xDa43e586BA0FA02Fc3AcbF2FB15B790C5c596dD0`
+**Smart Contract (GenVM StudioNet):** `0xbDEcf0f700E9e5F0e6e621fcb61022E7D15c8AC6`
 
 ---
 

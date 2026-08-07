@@ -92,7 +92,7 @@ function App() {
     return balance;
   };
 
-  const hasFauceted = claimedFaucet.includes(account.address.toLowerCase());
+  const hasFauceted = claimedFaucet.includes(account.address.toLowerCase()) && balance >= 200;
 
   const handleFaucet = async () => {
     setLoadingStates(prev => ({...prev, faucet: true}));
@@ -379,7 +379,7 @@ function App() {
         <button className="btn-primary" onClick={handleFaucet}
           disabled={loadingStates.faucet || hasFauceted}
           style={{width: 'auto', padding: '10px 20px', background: hasFauceted ? 'rgba(0,0,0,0.4)' : undefined, border: hasFauceted ? '1px solid #444' : undefined}}>
-          {loadingStates.faucet ? '⏳ Requesting...' : hasFauceted ? '✅ Faucet Claimed' : '🏦 Request 1000 G-USD'}
+          {loadingStates.faucet ? '⏳ Requesting...' : hasFauceted ? '✅ Faucet Claimed' : claimedFaucet.includes(account.address.toLowerCase()) ? '🔄 Top Up 1000 G-USD' : '🏦 Request 1000 G-USD'}
         </button>
         <div style={{background: 'rgba(0,255,136,0.08)', border: '1px solid #00ff88', padding: '10px 18px', borderRadius: '8px', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.95rem'}}>
           <div style={{width: '7px', height: '7px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 8px #00ff88'}}></div>

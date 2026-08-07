@@ -290,6 +290,9 @@ class PredictionMarketContract(gl.Contract):
         total_pool = yes_pool + no_pool
         
         user_addr_key = user_addr.lower()
+        sender = str(gl.message.sender_address).lower()
+        if sender != user_addr_key:
+            raise gl.vm.UserError("Sender must match the claiming address")
         user_yes_pos = market["yes_positions"].get(user_addr_key, 0)
         user_no_pos = market["no_positions"].get(user_addr_key, 0)
         

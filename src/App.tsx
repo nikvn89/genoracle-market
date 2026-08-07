@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0x5CCe607264EEEB838667733AD1E8718669414fFC"; // V26 (Wikipedia direct fetch)
+const CONTRACT_ADDRESS = "0xEb75574c63e04be1F32560f64Ca7F7295f276f40"; // V27 (sender check on claim)
 
 // Helper: days until/since deadline
 function getDeadlineStatus(deadline: string) {
@@ -457,41 +457,30 @@ function App() {
             </form>
             {createMsg && <div className={`result-box ${createMsg.startsWith('✅') ? 'success' : ''}`}>{createMsg}</div>}
 
-            {/* Quick Fill Presets */}
-            <div style={{marginTop: '25px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px'}}>
-              <h3 style={{color: 'var(--accent-color)', fontSize: '1rem', marginBottom: '12px'}}>📋 Quick Fill Examples</h3>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                <button type="button" onClick={() => {
-                  setMarketQuestion('Did Argentina win the 2022 FIFA World Cup?');
-                  setMarketDeadline('2022-12-31');
-                  setMarketDomain('');
-                  setDomainManual(false);
-                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
-                }} style={{padding: '10px 14px', background: 'rgba(0,210,255,0.08)', border: '1px solid rgba(0,210,255,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
-                  🏆 <strong>Argentina World Cup 2022</strong><br/>
-                  <span style={{color: 'var(--success)', fontSize: '11px'}}>Past event → AI resolves YES → Winners get paid</span>
-                </button>
-                <button type="button" onClick={() => {
-                  setMarketQuestion('Did the 2024 Summer Olympics take place in Paris, France?');
-                  setMarketDeadline('2024-09-30');
-                  setMarketDomain('');
-                  setDomainManual(false);
-                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
-                }} style={{padding: '10px 14px', background: 'rgba(0,210,255,0.08)', border: '1px solid rgba(0,210,255,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
-                  🏅 <strong>Paris Olympics 2024</strong><br/>
-                  <span style={{color: 'var(--success)', fontSize: '11px'}}>Past event → AI resolves YES → Test payout math</span>
-                </button>
-                <button type="button" onClick={() => {
-                  setMarketQuestion('Will the 2028 Summer Olympics be held in Los Angeles?');
-                  setMarketDeadline('2028-09-30');
-                  setMarketDomain('');
-                  setDomainManual(false);
-                  setCreateMsg('✏️ Form filled! Click Initialize to create this market.');
-                }} style={{padding: '10px 14px', background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', color: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem', fontFamily: 'Rajdhani', transition: '0.2s'}}>
-                  🚀 <strong>LA Olympics 2028</strong><br/>
-                  <span style={{color: 'var(--warning)', fontSize: '11px'}}>Future event → Funds LOCKED until deadline → Test TOO_EARLY</span>
-                </button>
-              </div>
+            {/* Load Example — compact dropdown */}
+            <div style={{marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px'}}>
+              <span style={{color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap'}}>📋 Load example:</span>
+              <select defaultValue="" onChange={e => {
+                const v = e.target.value;
+                if (!v) return;
+                const examples: Record<string, {q:string, d:string, dl:string}> = {
+                  argentina: {q: 'Did Argentina win the 2022 FIFA World Cup?', d: '', dl: '2022-12-31'},
+                  paris: {q: 'Did the 2024 Summer Olympics take place in Paris, France?', d: '', dl: '2024-09-30'},
+                  la2028: {q: 'Will the 2028 Summer Olympics be held in Los Angeles?', d: '', dl: '2028-09-30'},
+                };
+                const ex = examples[v];
+                setMarketQuestion(ex.q);
+                setMarketDeadline(ex.dl);
+                setMarketDomain(ex.d);
+                setDomainManual(false);
+                setCreateMsg('✏️ Form filled! Review and click Initialize.');
+                e.target.value = '';
+              }} style={{flex: 1, padding: '8px 10px', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-muted)', borderRadius: '6px', fontSize: '0.82rem', cursor: 'pointer'}}>
+                <option value="">— select to auto-fill —</option>
+                <option value="argentina">🏆 Argentina World Cup 2022 (Past → YES)</option>
+                <option value="paris">🏅 Paris Olympics 2024 (Past → YES)</option>
+                <option value="la2028">🚀 LA Olympics 2028 (Future → LOCKED)</option>
+              </select>
             </div>
 
             {/* Leaderboard */}

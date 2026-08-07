@@ -63,7 +63,7 @@ Two markets are pre-seeded with real 2-sided pools. Go to **AI TRIBUNAL RESOLUTI
 2. Click **Wallet A** → **🏦 Request 1000 G-USD** (faucet)
 3. Use **📋 Load example** dropdown → select any scenario → click **🚀 Initialize**
 4. Place a **YES** bet as Wallet A
-5. Switch to **Wallet B** → faucet → place **NO** bet
+5. Switch to **Wallet B** → click **🏦 Request 1000 G-USD** (or **🔄 Top Up** if already claimed with low balance) → place **NO** bet
 6. Go to **AI TRIBUNAL RESOLUTION** → **Close Betting** → **Summon Tribunal**
 7. AI reads Wikipedia, reaches consensus, resolves market
 8. Switch back to **Wallet A** → **💰 Claim Payout** → balance increases

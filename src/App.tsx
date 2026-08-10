@@ -6,7 +6,7 @@ const client = createClient({
   endpoint: '/api/rpc'
 });
 
-const CONTRACT_ADDRESS = "0x65581AA3AB5d064571F8EF48D74451Be1cFF9a68"; // V28 (faucet re-claim < 200G)
+const CONTRACT_ADDRESS = "0x3a72Af40212f9075F13495Aa27cD58C6F4127337";
 
 // Helper: days until/since deadline
 function getDeadlineStatus(deadline: string) {

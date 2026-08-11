@@ -34,6 +34,19 @@ const statusLabel = (status: Market['status']) => {
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
+const MAX_ACTIVE_MARKETS = 50
+const MAX_ACTIVE_PER_CREATOR = 5
+const HISTORY_PAGE_SIZE = 10
+const AUTHORITY_OPTIONS = [
+  'fifa.com',
+  'nba.com',
+  'nfl.com',
+  'uefa.com',
+  'sec.gov',
+  'federalreserve.gov',
+  'nasa.gov',
+  'who.int',
+]
 
 function App() {
   const [account, setAccount] = useState('')
@@ -49,6 +62,8 @@ function App() {
   const [deadline, setDeadline] = useState('')
 
   const [betAmount, setBetAmount] = useState('25')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyVisible, setHistoryVisible] = useState(HISTORY_PAGE_SIZE)
 
   const selected = selectedId ? markets[selectedId] : undefined
 
@@ -56,6 +71,34 @@ function App() {
     () => Object.entries(markets).reverse(),
     [markets],
   )
+
+  const activeMarkets = useMemo(
+    () =>
+      orderedMarkets.filter(([, market]) =>
+        ['OPEN', 'CLOSED_FOR_BETTING'].includes(market.status),
+      ),
+    [orderedMarkets],
+  )
+
+  const historyMarkets = useMemo(
+    () =>
+      orderedMarkets.filter(([, market]) =>
+        ['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(market.status),
+      ),
+    [orderedMarkets],
+  )
+
+  const creatorActiveCount = useMemo(() => {
+    if (!account) return 0
+    const wallet = account.toLowerCase()
+    return activeMarkets.filter(([, market]) =>
+      (market.creator ?? '').toLowerCase() === wallet,
+    ).length
+  }, [account, activeMarkets])
+
+  const createLimitReached =
+    activeMarkets.length >= MAX_ACTIVE_MARKETS ||
+    (!!account && creatorActiveCount >= MAX_ACTIVE_PER_CREATOR)
 
   const run = async (action: BusyAction, fn: () => Promise<void>) => {
     try {
@@ -121,6 +164,12 @@ function App() {
       if (!question.trim()) throw new Error('Question is required.')
       if (!domain.trim()) throw new Error('Authoritative domain is required.')
       if (!deadline) throw new Error('Deadline is required.')
+      if (activeMarkets.length >= MAX_ACTIVE_MARKETS) {
+        throw new Error('Maximum 50 active markets reached.')
+      }
+      if (creatorActiveCount >= MAX_ACTIVE_PER_CREATOR) {
+        throw new Error('This wallet already has 5 active markets.')
+      }
 
       await genOracle.createMarket(
         account,
@@ -210,9 +259,22 @@ function App() {
     selected.status === 'CLOSED_FOR_BETTING' &&
     deadlinePassed
 
+  const walletKey = account?.toLowerCase() ?? ''
+  const yourYes = selected && walletKey
+    ? selected.yes_positions[walletKey] ?? 0
+    : 0
+  const yourNo = selected && walletKey
+    ? selected.no_positions[walletKey] ?? 0
+    : 0
+
   const canClaim =
     !!selected &&
-    ['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(selected.status)
+    !!account &&
+    (
+      (selected.status === 'RESOLVED_YES' && yourYes > 0) ||
+      (selected.status === 'RESOLVED_NO' && yourNo > 0) ||
+      (selected.status === 'FAILED' && (yourYes > 0 || yourNo > 0))
+    )
 
   return (
     <div className="app-shell">
@@ -296,13 +358,19 @@ function App() {
 
             <label>
               Authoritative domain
-              <input
+              <select
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                placeholder="fifa.com"
-              />
+              >
+                <option value="">Select authority…</option>
+                {AUTHORITY_OPTIONS.map((authority) => (
+                  <option key={authority} value={authority}>
+                    {authority}
+                  </option>
+                ))}
+              </select>
               <small>
-                Resolution sources must belong to this domain or its subdomains.
+                Resolution sources must belong to the selected authority or its subdomains.
               </small>
             </label>
 
@@ -318,12 +386,38 @@ function App() {
               </small>
             </label>
 
+            <div
+              className="limit-summary"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px 16px',
+                marginTop: '4px',
+                marginBottom: '12px',
+                fontSize: '0.92rem',
+              }}
+            >
+              <span>
+                Network active: <strong>{activeMarkets.length} / {MAX_ACTIVE_MARKETS}</strong>
+              </span>
+              <span>
+                Your active:{' '}
+                <strong>
+                  {account ? creatorActiveCount : '—'} / {MAX_ACTIVE_PER_CREATOR}
+                </strong>
+              </span>
+            </div>
+
             <button
               className="button primary full"
-              disabled={busy !== ''}
+              disabled={busy !== '' || createLimitReached}
               type="submit"
             >
-              {busy === 'create' ? 'Creating…' : 'Create Market'}
+              {busy === 'create'
+                ? 'Creating…'
+                : createLimitReached
+                  ? 'Active Market Limit Reached'
+                  : 'Create Market'}
             </button>
           </form>
         </section>
@@ -343,13 +437,25 @@ function App() {
             </button>
           </div>
 
+          <div
+            className="market-section-title"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              marginBottom: '12px',
+            }}
+          >
+            <strong>Active Markets</strong>
+            <span>{activeMarkets.length} / {MAX_ACTIVE_MARKETS}</span>
+          </div>
+
           <div className="market-list">
-            {orderedMarkets.length === 0 ? (
-              <div className="empty">
-                No markets on this contract yet.
-              </div>
+            {activeMarkets.length === 0 ? (
+              <div className="empty">No active markets.</div>
             ) : (
-              orderedMarkets.map(([id, market]) => (
+              activeMarkets.map(([id, market]) => (
                 <button
                   key={id}
                   className={`market-card ${selectedId === id ? 'active' : ''}`}
@@ -374,6 +480,51 @@ function App() {
               ))
             )}
           </div>
+
+          <button
+            className="button ghost full history-toggle"
+            style={{ marginTop: '14px' }}
+            onClick={() => setHistoryOpen((value) => !value)}
+          >
+            {historyOpen ? 'Hide' : 'Show'} Market History ({historyMarkets.length})
+          </button>
+
+          {historyOpen ? (
+            <div className="market-list history-list">
+              {historyMarkets.slice(0, historyVisible).map(([id, market]) => (
+                <button
+                  key={id}
+                  className={`market-card history-card ${selectedId === id ? 'active' : ''}`}
+                  onClick={() => setSelectedId(id)}
+                >
+                  <div className="market-card-top">
+                    <span className={`status ${market.status.toLowerCase()}`}>
+                      {statusLabel(market.status)}
+                    </span>
+                    <span className="market-id">{id}</span>
+                  </div>
+                  <strong>{market.question}</strong>
+                  <div className="meta">
+                    <span>Authority: {market.authoritative_domain}</span>
+                    <span>Deadline: {market.deadline}</span>
+                  </div>
+                  <div className="pools">
+                    <span>YES {market.yes_pool}</span>
+                    <span>NO {market.no_pool}</span>
+                  </div>
+                </button>
+              ))}
+
+              {historyVisible < historyMarkets.length ? (
+                <button
+                  className="button ghost full"
+                  onClick={() => setHistoryVisible((value) => value + HISTORY_PAGE_SIZE)}
+                >
+                  Load More
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="panel detail-panel">
@@ -412,6 +563,22 @@ function App() {
                   <div>
                     <span>NO pool</span>
                     <strong>{selected.no_pool} G-USD</strong>
+                  </div>
+                  <div>
+                    <span>Your YES</span>
+                    <strong>
+                      {account
+                        ? selected.yes_positions[account.toLowerCase()] ?? 0
+                        : '—'} G-USD
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Your NO</span>
+                    <strong>
+                      {account
+                        ? selected.no_positions[account.toLowerCase()] ?? 0
+                        : '—'} G-USD
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -487,38 +654,62 @@ function App() {
                 <div className="result-box">
                   <h3>{statusLabel(selected.status)}</h3>
 
-                  {selected.resolution_source ? (
-                    <div className="result-row">
-                      <span>Source</span>
-                      <a
-                        href={selected.resolution_source}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {selected.resolution_source}
-                      </a>
-                    </div>
-                  ) : null}
-
-                  {selected.resolution_reason ? (
-                    <div className="reason">
-                      {selected.resolution_reason}
-                    </div>
-                  ) : null}
-
-                  <button
-                    className="button primary full"
-                    disabled={!canClaim || busy !== '' || !account}
-                    onClick={claim}
+                  <div
+                    className="resolution-summary"
+                    style={{
+                      display: 'grid',
+                      gap: '12px',
+                      marginBottom: '14px',
+                    }}
                   >
-                    {selected.status === 'FAILED'
-                      ? busy === 'claim'
-                        ? 'Refunding…'
-                        : 'Claim Refund'
-                      : busy === 'claim'
-                        ? 'Claiming…'
-                        : 'Claim Winnings'}
-                  </button>
+                    {selected.resolution_source ? (
+                      <div className="result-row">
+                        <span>Authoritative source</span>
+                        <a
+                          href={selected.resolution_source}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ wordBreak: 'break-word' }}
+                        >
+                          {selected.resolution_source}
+                        </a>
+                      </div>
+                    ) : null}
+
+                    {selected.resolution_reason ? (
+                      <div>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginBottom: '6px',
+                            opacity: 0.72,
+                            fontSize: '0.82rem',
+                          }}
+                        >
+                          AI resolution reason
+                        </span>
+                        <div className="reason">
+                          {selected.resolution_reason}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {canClaim ? (
+                    <button
+                      className="button primary full"
+                      disabled={busy !== ''}
+                      onClick={claim}
+                    >
+                      {selected.status === 'FAILED'
+                        ? busy === 'claim'
+                          ? 'Refunding…'
+                          : 'Claim Refund'
+                        : busy === 'claim'
+                          ? 'Claiming…'
+                          : 'Claim Winnings'}
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </>

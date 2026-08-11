@@ -6,6 +6,7 @@ from datetime import date
 from genlayer import *
 
 
+# GenOracle V4 Final - 50x5 Limits + Resilient Authority Sources
 class PredictionMarketContract(gl.Contract):
     markets_str: str
     balances_str: str
@@ -163,6 +164,50 @@ class PredictionMarketContract(gl.Contract):
             authoritative_domain
         )
         clean_deadline = deadline.strip()
+        creator = str(gl.message.sender_address).lower()
+
+        # ========================================================
+        # ACTIVE MARKET LIMITS
+        #
+        # Keep the protocol usable long-term without deleting
+        # auditable on-chain market history. Only OPEN and
+        # CLOSED_FOR_BETTING markets consume active slots.
+        # Resolved / failed markets remain in History but no
+        # longer count toward these limits.
+        #
+        # - Max 50 active markets across GenOracle
+        # - Max 5 active markets per creator wallet
+        # ========================================================
+        active_total = 0
+        active_by_creator = 0
+
+        for existing_market in markets.values():
+            existing_status = existing_market.get(
+                "status",
+                "",
+            )
+
+            if existing_status in [
+                "OPEN",
+                "CLOSED_FOR_BETTING",
+            ]:
+                active_total += 1
+
+                if (
+                    existing_market.get("creator", "")
+                    == creator
+                ):
+                    active_by_creator += 1
+
+        if active_total >= 50:
+            raise gl.vm.UserError(
+                "Maximum active market limit reached (50)"
+            )
+
+        if active_by_creator >= 5:
+            raise gl.vm.UserError(
+                "Maximum active markets per creator reached (5)"
+            )
 
         if not clean_id:
             raise gl.vm.UserError(
@@ -185,6 +230,27 @@ class PredictionMarketContract(gl.Contract):
                 "(e.g. fifa.com)"
             )
 
+        # Curated authority whitelist.
+        # This stays inline so the contract storage layout and public schema
+        # remain identical to the already-working GenOracle contract.
+        if not (
+            clean_domain == "fifa.com"
+            or clean_domain == "uefa.com"
+            or clean_domain == "nba.com"
+            or clean_domain == "nfl.com"
+            or clean_domain == "mlb.com"
+            or clean_domain == "nhl.com"
+            or clean_domain == "federalreserve.gov"
+            or clean_domain == "bls.gov"
+            or clean_domain == "bea.gov"
+            or clean_domain == "sec.gov"
+            or clean_domain == "nasa.gov"
+            or clean_domain == "ethereum.org"
+        ):
+            raise gl.vm.UserError(
+                "Authoritative domain is not approved by GenOracle"
+            )
+
         # Basic YYYY-MM-DD validation.
         if len(clean_deadline) != 10:
             raise gl.vm.UserError(
@@ -200,6 +266,7 @@ class PredictionMarketContract(gl.Contract):
             )
 
         markets[clean_id] = {
+            "creator": creator,
             "question": clean_question,
             "authoritative_domain": clean_domain,
             "deadline": clean_deadline,
@@ -404,7 +471,23 @@ class PredictionMarketContract(gl.Contract):
         # ========================================================
 
         def leader_fn() -> str:
-            source_prompt = f"""
+            # Try at most two authoritative pages. The second attempt is
+            # only used when the first page cannot conclusively resolve
+            # the question. This improves robustness on dynamic sports
+            # sites without relaxing the enforced authority policy.
+            last_source_url = ""
+            last_reason = "No conclusive authoritative source"
+
+            for attempt in range(2):
+                previous_source_note = ""
+                if last_source_url:
+                    previous_source_note = (
+                        "\nPREVIOUS SOURCE TO AVOID:\n"
+                        + last_source_url
+                        + "\nSelect a DIFFERENT authoritative URL."
+                    )
+
+                source_prompt = f"""
 You are selecting the authoritative source for a
 prediction market.
 
@@ -413,88 +496,103 @@ QUESTION:
 
 ENFORCED AUTHORITY DOMAIN:
 {domain}
+{previous_source_note}
 
 Select ONE publicly accessible HTTPS page belonging
 to the exact authority domain "{domain}" or one of
 its subdomains.
 
-The page must contain the strongest available
-evidence for resolving the prediction-market
-question.
+SOURCE QUALITY POLICY:
 
-STRICT AUTHORITY POLICY:
-
-1. The URL MUST belong to {domain} or a subdomain
+1. Prefer an official article, press release, report,
+   recap, announcement, or other stable page whose
+   HUMAN-READABLE TEXT directly states the fact needed
+   to resolve the question.
+2. Avoid homepages, search pages, live trackers, live
+   match centers, interactive dashboards, and pages
+   whose result exists mainly in JavaScript widgets
+   when a stable textual page is available.
+3. The URL MUST belong to {domain} or a subdomain
    of {domain}.
-2. Do NOT use Wikipedia unless wikipedia.org is the
+4. Do NOT use Wikipedia unless wikipedia.org is the
    configured authority.
-3. Do NOT use search engines as the final source.
-4. Do NOT use another news site or another domain.
-5. Return ONLY one HTTPS URL.
-6. No explanation.
-7. No markdown.
-8. No quotes.
+5. Do NOT use search engines as the final source.
+6. Do NOT use another news site or another domain.
+7. Return ONLY one HTTPS URL.
+8. No explanation, markdown, or quotes.
 """
 
-            try:
-                source_url = (
-                    gl.nondet.exec_prompt(
-                        source_prompt
+                try:
+                    source_url = (
+                        gl.nondet.exec_prompt(
+                            source_prompt
+                        )
+                        .strip()
+                        .splitlines()[0]
+                        .strip()
                     )
-                    .strip()
-                    .splitlines()[0]
-                    .strip()
-                )
-            except Exception:
-                return json.dumps({
-                    "decision": "UNKNOWN",
-                    "source_url": "",
-                    "reason": "Source selection failed",
-                })
+                except Exception:
+                    last_reason = "Source selection failed"
+                    continue
 
-            # Enforce authority deterministically.
-            if not self._url_matches_domain(
-                source_url,
-                domain,
-            ):
-                return json.dumps({
-                    "decision": "UNKNOWN",
-                    "source_url": source_url,
-                    "reason": "Authority policy violation",
-                })
-
-            try:
-                source_text = gl.nondet.web.render(
+                # Enforce authority deterministically on EVERY attempt.
+                if not self._url_matches_domain(
                     source_url,
-                    mode="text",
-                )
-            except Exception:
-                return json.dumps({
-                    "decision": "UNKNOWN",
-                    "source_url": source_url,
-                    "reason": (
-                        "Authoritative source "
-                        "could not be fetched"
-                    ),
-                })
+                    domain,
+                ):
+                    last_source_url = source_url
+                    last_reason = "Authority policy violation"
+                    continue
 
-            if (
-                not source_text
-                or len(source_text) < 200
-            ):
-                return json.dumps({
-                    "decision": "UNKNOWN",
-                    "source_url": source_url,
-                    "reason": (
-                        "Authoritative source "
-                        "contained insufficient evidence"
-                    ),
-                })
+                # Do not accept the same URL twice.
+                if (
+                    last_source_url
+                    and source_url == last_source_url
+                ):
+                    last_reason = "Duplicate source selected"
+                    continue
 
-            if len(source_text) > 7000:
-                source_text = source_text[:7000]
+                last_source_url = source_url
 
-            judge_prompt = f"""
+                # Dynamic pages may need a browser wait. First try
+                # readable text; then rendered HTML from the SAME URL.
+                try:
+                    source_text = gl.nondet.web.render(
+                        source_url,
+                        mode="text",
+                        wait_after_loaded="5s",
+                    )
+                except Exception:
+                    source_text = ""
+
+                if (
+                    not source_text
+                    or len(source_text) < 200
+                ):
+                    try:
+                        source_text = gl.nondet.web.render(
+                            source_url,
+                            mode="html",
+                            wait_after_loaded="5s",
+                        )
+                    except Exception:
+                        source_text = ""
+
+                if (
+                    not source_text
+                    or len(source_text) < 200
+                ):
+                    last_reason = (
+                        "Authoritative source contained "
+                        "insufficient evidence after rendered-text "
+                        "and HTML fallback"
+                    )
+                    continue
+
+                if len(source_text) > 10000:
+                    source_text = source_text[:10000]
+
+                judge_prompt = f"""
 You are the leader of a decentralized prediction
 market oracle.
 
@@ -543,41 +641,106 @@ pending.
 
 IMPORTANT:
 
+Use the page content as evidence, not merely words
+in the URL.
 Output ONE LABEL ONLY.
 Do not explain.
 Do not use punctuation.
 Do not output any additional text.
 """
 
-            try:
-                ai_response = gl.nondet.exec_prompt(
-                    judge_prompt
+                try:
+                    ai_response = gl.nondet.exec_prompt(
+                        judge_prompt
+                    )
+                    decision = self._parse_verdict(
+                        ai_response
+                    )
+                except Exception:
+                    last_reason = "Leader adjudication failed"
+                    continue
+
+                # YES / NO are conclusive. TOO_EARLY is also a valid
+                # terminal label for a genuinely unresolved future event.
+                if decision in [
+                    "YES",
+                    "NO",
+                    "TOO_EARLY",
+                ]:
+                    return json.dumps({
+                        "decision": decision,
+                        "source_url": source_url,
+                        "reason": (
+                            "Leader independently fetched and "
+                            "evaluated an enforced authoritative source"
+                        ),
+                    })
+
+                # Text/HTML was inconclusive. Inspect a screenshot of
+                # the SAME authoritative URL with a vision-capable model.
+                try:
+                    source_image = gl.nondet.web.render(
+                        source_url,
+                        mode="screenshot",
+                        wait_after_loaded="5s",
+                    )
+                    vision_prompt = f"""
+Resolve the prediction-market QUESTION using ONLY
+what is visibly shown in this screenshot of the
+authoritative page.
+
+QUESTION:
+{question}
+
+ENFORCED AUTHORITY DOMAIN:
+{domain}
+
+SOURCE URL:
+{source_url}
+
+Return EXACTLY ONE label:
+YES
+NO
+UNKNOWN
+TOO_EARLY
+
+Do not infer a result merely from the URL.
+Output ONE LABEL ONLY. No explanation.
+"""
+                    vision_raw = gl.nondet.exec_prompt(
+                        vision_prompt,
+                        images=[source_image],
+                    )
+                    vision_decision = self._parse_verdict(
+                        vision_raw
+                    )
+                except Exception:
+                    vision_decision = "UNKNOWN"
+
+                if vision_decision in [
+                    "YES",
+                    "NO",
+                    "TOO_EARLY",
+                ]:
+                    return json.dumps({
+                        "decision": vision_decision,
+                        "source_url": source_url,
+                        "reason": (
+                            "Leader used authoritative screenshot "
+                            "fallback after text was inconclusive"
+                        ),
+                    })
+
+                last_reason = (
+                    "Text and screenshot evidence were inconclusive; "
+                    "alternate authoritative source also did not "
+                    "conclusively establish YES or NO"
                 )
-
-                # =================================================
-                # STEWARD FIX #2
-                # Exact parsing. Never:
-                # if "YES" in response
-                # =================================================
-
-                decision = self._parse_verdict(
-                    ai_response
-                )
-
-            except Exception:
-                return json.dumps({
-                    "decision": "UNKNOWN",
-                    "source_url": source_url,
-                    "reason": "Leader adjudication failed",
-                })
 
             return json.dumps({
-                "decision": decision,
-                "source_url": source_url,
-                "reason": (
-                    "Leader fetched and evaluated "
-                    "the enforced authoritative source"
-                ),
+                "decision": "UNKNOWN",
+                "source_url": last_source_url,
+                "reason": last_reason,
             })
 
         # ========================================================
@@ -665,18 +828,33 @@ Do not output any additional text.
                 # No leader "research_report" is reused.
                 # ================================================
 
+                # Validator independently performs the same source-fetch
+                # strategy. It does not reuse the leader's evidence.
                 try:
                     validator_source = (
                         gl.nondet.web.render(
                             source_url,
                             mode="text",
+                            wait_after_loaded="5s",
                         )
                     )
                 except Exception:
-                    return (
-                        leader_decision
-                        == "UNKNOWN"
-                    )
+                    validator_source = ""
+
+                if (
+                    not validator_source
+                    or len(validator_source) < 200
+                ):
+                    try:
+                        validator_source = (
+                            gl.nondet.web.render(
+                                source_url,
+                                mode="html",
+                                wait_after_loaded="5s",
+                            )
+                        )
+                    except Exception:
+                        validator_source = ""
 
                 if (
                     not validator_source
@@ -687,9 +865,9 @@ Do not output any additional text.
                         == "UNKNOWN"
                     )
 
-                if len(validator_source) > 7000:
+                if len(validator_source) > 10000:
                     validator_source = (
-                        validator_source[:7000]
+                        validator_source[:10000]
                     )
 
                 validator_prompt = f"""
@@ -757,7 +935,57 @@ Do not output additional text.
                     )
                 )
 
-                # Exact consensus.
+                # If text is inconclusive while the leader reached a
+                # conclusive verdict, independently inspect the SAME
+                # authoritative URL as a screenshot.
+                if (
+                    validator_decision == "UNKNOWN"
+                    and leader_decision in [
+                        "YES",
+                        "NO",
+                        "TOO_EARLY",
+                    ]
+                ):
+                    try:
+                        validator_image = gl.nondet.web.render(
+                            source_url,
+                            mode="screenshot",
+                            wait_after_loaded="5s",
+                        )
+                        validator_vision_prompt = f"""
+Independently resolve the prediction-market
+QUESTION using ONLY what is visibly shown in this
+screenshot of the authoritative page.
+
+QUESTION:
+{question}
+
+ENFORCED AUTHORITY DOMAIN:
+{domain}
+
+SOURCE URL:
+{source_url}
+
+Return EXACTLY ONE label:
+YES
+NO
+UNKNOWN
+TOO_EARLY
+
+Do not infer a result merely from the URL.
+Output ONE LABEL ONLY. No explanation.
+"""
+                        validator_vision_raw = gl.nondet.exec_prompt(
+                            validator_vision_prompt,
+                            images=[validator_image],
+                        )
+                        validator_decision = self._parse_verdict(
+                            validator_vision_raw
+                        )
+                    except Exception:
+                        validator_decision = "UNKNOWN"
+
+                # Exact verdict consensus.
                 return (
                     validator_decision
                     == leader_decision

@@ -102,6 +102,7 @@ async function read(functionName: string, args: Array<string>) {
 }
 
 export type Market = {
+  creator?: string
   question: string
   authoritative_domain: string
   deadline: string

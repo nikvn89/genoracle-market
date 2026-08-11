@@ -107,13 +107,17 @@ Examples of supported authorities include:
 
 ```text
 fifa.com
+uefa.com
 nba.com
 nfl.com
-uefa.com
-sec.gov
+mlb.com
+nhl.com
 federalreserve.gov
+bls.gov
+bea.gov
+sec.gov
 nasa.gov
-who.int
+ethereum.org
 ```
 
 The frontend provides a curated authority selector, while the contract remains the enforcement layer.
@@ -516,10 +520,9 @@ genoracle-market/
 │
 ├── src/
 │   ├── App.tsx
-│   ├── index.css
+│   ├── main.tsx
+│   ├── styles.css
 │   └── lib/
-│       ├── genlayer.ts
-│       └── config.ts
 │
 ├── package.json
 ├── vite.config.ts

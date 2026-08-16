@@ -1,6 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { CONTRACT_ADDRESS } from './lib/config'
-import { connectWallet, genOracle, Market } from './lib/genlayer'
+import {
+  connectWallet,
+  genOracle,
+  getWalletStatus,
+  Market,
+  STUDIONET,
+  subscribeWalletEvents,
+} from './lib/genlayer'
 
 type BusyAction =
   | ''
@@ -52,6 +59,9 @@ function App() {
   const [account, setAccount] = useState('')
   const [markets, setMarkets] = useState<Record<string, Market>>({})
   const [balance, setBalance] = useState(0)
+  const [networkId, setNetworkId] = useState(0)
+  const [isStudionet, setIsStudionet] = useState(false)
+  const [nativeBalanceWei, setNativeBalanceWei] = useState(BigInt(0))
   const [busy, setBusy] = useState<BusyAction>('')
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
@@ -66,6 +76,27 @@ function App() {
   const [historyVisible, setHistoryVisible] = useState(HISTORY_PAGE_SIZE)
 
   const selected = selectedId ? markets[selectedId] : undefined
+
+  const nativeGenBalance = useMemo(() => {
+    const base = BigInt(10) ** BigInt(18)
+    const whole = nativeBalanceWei / base
+    const remainder = nativeBalanceWei % base
+    const fraction = remainder
+      .toString()
+      .padStart(18, '0')
+      .slice(0, 4)
+      .replace(/0+$/, '')
+    return fraction ? `${whole}.${fraction}` : whole.toString()
+  }, [nativeBalanceWei])
+
+  const ensureWritable = () => {
+    if (!account) throw new Error('Connect wallet first.')
+    if (!isStudionet) {
+      throw new Error(
+        `Wrong network. Switch MetaMask to ${STUDIONET.name} (chain ${STUDIONET.id}) before submitting a transaction.`,
+      )
+    }
+  }
 
   const orderedMarkets = useMemo(
     () => Object.entries(markets).reverse(),
@@ -140,16 +171,69 @@ function App() {
     void refresh()
   }, [account])
 
+  useEffect(() => {
+    const unsubscribe = subscribeWalletEvents({
+      onChainChanged: (chainId) => {
+        setNetworkId(chainId)
+        const onStudionet = chainId === STUDIONET.id
+        setIsStudionet(onStudionet)
+
+        if (!onStudionet) {
+          setNativeBalanceWei(BigInt(0))
+          setMessage(
+            `MetaMask switched away from ${STUDIONET.name}. Write actions are disabled until you reconnect to chain ${STUDIONET.id}.`,
+          )
+          return
+        }
+
+        if (account) {
+          void getWalletStatus(account).then((status) => {
+            setNativeBalanceWei(status.nativeBalanceWei)
+            setMessage(`Connected to ${STUDIONET.name}.`)
+          })
+        }
+      },
+      onAccountsChanged: (accounts) => {
+        if (!accounts[0]) {
+          setAccount('')
+          setBalance(0)
+          setNetworkId(0)
+          setIsStudionet(false)
+          setNativeBalanceWei(BigInt(0))
+          setMessage('Wallet disconnected.')
+          return
+        }
+
+        void getWalletStatus(accounts[0]).then((status) => {
+          setAccount(status.account)
+          setNetworkId(status.chainId)
+          setIsStudionet(status.isStudionet)
+          setNativeBalanceWei(status.nativeBalanceWei)
+          setMessage(
+            status.isStudionet
+              ? `Account changed. Connected to ${STUDIONET.name}.`
+              : `Account changed, but MetaMask is on the wrong network. Reconnect to switch to chain ${STUDIONET.id}.`,
+          )
+        })
+      },
+    })
+
+    return unsubscribe
+  }, [account])
+
   const handleConnect = () =>
     run('connect', async () => {
       const connected = await connectWallet()
-      setAccount(connected)
-      setMessage('Wallet connected to GenLayer Studionet.')
+      setAccount(connected.account)
+      setNetworkId(connected.chainId)
+      setIsStudionet(connected.isStudionet)
+      setNativeBalanceWei(connected.nativeBalanceWei)
+      setMessage(`Wallet connected to ${STUDIONET.name}.`)
     })
 
   const handleFaucet = () =>
     run('faucet', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       await genOracle.faucet(account)
       await refresh()
       setMessage('Demo G-USD balance updated.')
@@ -159,7 +243,7 @@ function App() {
     event.preventDefault()
 
     return run('create', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       if (!marketId.trim()) throw new Error('Market ID is required.')
       if (!question.trim()) throw new Error('Question is required.')
       if (!domain.trim()) throw new Error('Authoritative domain is required.')
@@ -191,7 +275,7 @@ function App() {
 
   const placeBet = (isYes: boolean) =>
     run('bet', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       if (!selectedId || !selected) throw new Error('Select a market first.')
 
       const amount = Number(betAmount)
@@ -206,7 +290,7 @@ function App() {
 
   const closeBetting = () =>
     run('close', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       if (!selectedId) throw new Error('Select a market first.')
 
       await genOracle.closeBetting(account, selectedId)
@@ -216,7 +300,7 @@ function App() {
 
   const resolveMarket = () =>
     run('resolve', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       if (!selectedId) throw new Error('Select a market first.')
 
       const { hash } = await genOracle.resolveMarket(account, selectedId)
@@ -227,7 +311,7 @@ function App() {
 
   const claim = () =>
     run('claim', async () => {
-      if (!account) throw new Error('Connect wallet first.')
+      ensureWritable()
       if (!selectedId) throw new Error('Select a market first.')
 
       await genOracle.claimWinnings(account, selectedId)
@@ -246,16 +330,19 @@ function App() {
 
   const canClose =
     !!selected &&
+    isStudionet &&
     selected.status === 'OPEN' &&
     deadlinePassed
 
   const canBet =
     !!selected &&
+    isStudionet &&
     selected.status === 'OPEN' &&
     !deadlinePassed
 
   const canResolve =
     !!selected &&
+    isStudionet &&
     selected.status === 'CLOSED_FOR_BETTING' &&
     deadlinePassed
 
@@ -270,6 +357,7 @@ function App() {
   const canClaim =
     !!selected &&
     !!account &&
+    isStudionet &&
     (
       (selected.status === 'RESOLVED_YES' && yourYes > 0) ||
       (selected.status === 'RESOLVED_NO' && yourNo > 0) ||
@@ -295,7 +383,15 @@ function App() {
           {account ? (
             <>
               <div className="wallet-address">{short(account)}</div>
+              <div className={`network-chip ${isStudionet ? 'ok' : 'wrong'}`}>
+                {isStudionet
+                  ? `● ${STUDIONET.name}`
+                  : `⚠ Wrong network${networkId ? ` (chain ${networkId})` : ''}`}
+              </div>
               <div className="balance">{balance} G-USD</div>
+              <div className="native-balance">
+                Native gas: {nativeGenBalance} {STUDIONET.currencySymbol}
+              </div>
             </>
           ) : null}
 
@@ -304,14 +400,20 @@ function App() {
             onClick={handleConnect}
             disabled={busy !== ''}
           >
-            {account ? 'Wallet Connected' : busy === 'connect' ? 'Connecting…' : 'Connect Wallet'}
+            {account && isStudionet
+              ? 'Wallet Connected'
+              : busy === 'connect'
+                ? 'Connecting…'
+                : account
+                  ? 'Switch to GenLayer'
+                  : 'Connect Wallet'}
           </button>
 
           {account ? (
             <button
               className="button ghost"
               onClick={handleFaucet}
-              disabled={busy !== ''}
+              disabled={busy !== '' || !isStudionet}
             >
               {busy === 'faucet' ? 'Processing…' : 'Get Demo G-USD'}
             </button>
@@ -324,6 +426,14 @@ function App() {
         The leader and validators evaluate evidence under that policy, validators
         independently fetch the source, and only exact verdict labels are accepted.
       </section>
+
+      {account && isStudionet && nativeBalanceWei === BigInt(0) ? (
+        <div className="notice gas-notice">
+          <strong>Native GEN balance: 0.</strong> Demo G-USD is contract test credit, not native gas.
+          If MetaMask reports insufficient funds, fund this same address with the built-in Studionet
+          GEN faucet in GenLayer Studio before retrying.
+        </div>
+      ) : null}
 
       {message ? <div className="notice">{message}</div> : null}
 
@@ -410,7 +520,7 @@ function App() {
 
             <button
               className="button primary full"
-              disabled={busy !== '' || createLimitReached}
+              disabled={busy !== '' || createLimitReached || !isStudionet}
               type="submit"
             >
               {busy === 'create'
@@ -698,7 +808,7 @@ function App() {
                   {canClaim ? (
                     <button
                       className="button primary full"
-                      disabled={busy !== ''}
+                      disabled={busy !== '' || !isStudionet}
                       onClick={claim}
                     >
                       {selected.status === 'FAILED'

@@ -19,6 +19,26 @@ https://github.com/nikvn89/genoracle-market
 
 ---
 
+## First-time setup
+
+GenOracle runs on **GenLayer Studionet**. The frontend now checks the connected wallet network and asks MetaMask to switch to, or add, Studionet automatically when you connect.
+
+```text
+Network: GenLayer Studio Network
+Chain ID: 61999 (0xf22f)
+RPC: https://studio.genlayer.com/api
+Native currency: GEN
+Explorer: https://explorer-studio.genlayer.com
+```
+
+The app also shows the connected network and the wallet's native GEN balance in the header. Demo **G-USD** is contract test credit and is separate from native GEN.
+
+If MetaMask reports insufficient funds for a Studionet write, fund the same test address with the built-in Studionet GEN faucet available in the GenLayer Studio account selector (💧), then reconnect or refresh the app. The public Asimov/Bradbury faucet is not a Studionet faucet.
+
+For browser RPC calls, the deployed app uses a same-origin `/api/rpc` proxy by default; MetaMask itself is configured with the absolute Studionet RPC shown above.
+
+---
+
 ## 🎯 The Problem
 
 Prediction markets ultimately depend on one critical question:
@@ -107,17 +127,13 @@ Examples of supported authorities include:
 
 ```text
 fifa.com
-uefa.com
 nba.com
 nfl.com
-mlb.com
-nhl.com
-federalreserve.gov
-bls.gov
-bea.gov
+uefa.com
 sec.gov
+federalreserve.gov
 nasa.gov
-ethereum.org
+who.int
 ```
 
 The frontend provides a curated authority selector, while the contract remains the enforcement layer.
@@ -520,9 +536,10 @@ genoracle-market/
 │
 ├── src/
 │   ├── App.tsx
-│   ├── main.tsx
-│   ├── styles.css
+│   ├── index.css
 │   └── lib/
+│       ├── genlayer.ts
+│       └── config.ts
 │
 ├── package.json
 ├── vite.config.ts

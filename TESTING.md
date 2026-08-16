@@ -20,6 +20,49 @@ https://genoracle-market-nik.vercel.app/
 
 ---
 
+
+## 0. Fresh-wallet onboarding check
+
+### Objective
+
+Verify that a first-time visitor can connect a fresh MetaMask without already having GenLayer Studionet configured.
+
+### Frontend checks implemented
+
+1. Start MetaMask on a non-GenLayer network.
+2. Select `Connect Wallet`.
+3. The app requests chain `61999` (`0xf22f`).
+4. If Studionet is unknown to MetaMask, the app requests `wallet_addEthereumChain` using the official Studionet RPC.
+5. The header displays the connected network, demo G-USD balance, and native GEN balance.
+6. If the user manually switches away from Studionet, write actions are disabled and the app shows a wrong-network warning.
+7. If the user changes MetaMask accounts, the frontend updates the active account and wallet status.
+
+### Native GEN preflight
+
+The frontend reads `eth_getBalance` after connection and displays the native GEN balance. A zero balance is surfaced before the user submits a write. Demo G-USD from the contract faucet is not treated as gas.
+
+GenLayer documentation states that Studionet provides a built-in GEN faucet in the Studio account selector. If a fresh external MetaMask address receives an `insufficient funds` error, fund that same Studionet address there before retrying.
+
+### Manual end-to-end run still required before Explorer submission
+
+Use a MetaMask account that has never touched Studionet and record the actual result here before submitting the Project Explorer listing:
+
+```text
+Fresh wallet address: ______________________________
+Initial native GEN balance: ________________________
+Network auto-added/switched: PASS / FAIL
+Get Demo G-USD: PASS / FAIL
+Create market: PASS / FAIL
+Place bet: PASS / FAIL
+Resolve market: PASS / FAIL / NOT RUN
+Claim/refund: PASS / FAIL / NOT RUN
+Gas behavior observed: _____________________________
+Transaction / explorer links: ______________________
+```
+
+Do not mark this test PASS until it has been completed from a genuinely fresh wallet.
+
+---
 ## 1. Historical AI Resolution
 
 ### Objective

@@ -462,3 +462,30 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.network-chip,
+.native-balance {
+  border: 1px solid #1f3549;
+  background: rgba(10, 25, 38, 0.85);
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+.network-chip.ok {
+  color: #a8efc3;
+  border-color: rgba(74, 184, 119, 0.45);
+}
+
+.network-chip.wrong {
+  color: #ffd2a6;
+  border-color: rgba(231, 145, 73, 0.55);
+}
+
+.native-balance {
+  color: #a9bdd0;
+}
+
+.gas-notice {
+  border-color: #6d5730;
+}

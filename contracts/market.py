@@ -6,7 +6,7 @@ from datetime import date
 from genlayer import *
 
 
-# GenOracle V4 Final - 50x5 Limits + Resilient Authority Sources
+# GenOracle V5 - Multi-Source Authority Resolution
 class PredictionMarketContract(gl.Contract):
     markets_str: str
     balances_str: str
@@ -99,6 +99,29 @@ class PredictionMarketContract(gl.Contract):
 
         # Any verbose / malformed response fails closed.
         return "UNKNOWN"
+
+    def _evidence_window(self, content: str) -> str:
+        """Keep representative text from long pages.
+
+        Some authoritative pages contain large navigation/header payloads.
+        Taking only the first N characters can discard the actual result.
+        For long pages, preserve beginning + middle + end deterministically.
+        """
+        if len(content) <= 24000:
+            return content
+
+        first = content[:8000]
+        middle_start = max(0, (len(content) // 2) - 4000)
+        middle = content[middle_start:middle_start + 8000]
+        last = content[-8000:]
+
+        return (
+            first
+            + "\n\n--- MIDDLE OF AUTHORITATIVE PAGE ---\n\n"
+            + middle
+            + "\n\n--- END OF AUTHORITATIVE PAGE ---\n\n"
+            + last
+        )
 
     # ============================================================
     # FAUCET
@@ -471,62 +494,64 @@ class PredictionMarketContract(gl.Contract):
         # ========================================================
 
         def leader_fn() -> str:
-            # Try at most two authoritative pages. The second attempt is
-            # only used when the first page cannot conclusively resolve
-            # the question. This improves robustness on dynamic sports
-            # sites without relaxing the enforced authority policy.
+            # Try several DISTINCT pages from the enforced authority.
+            # A single weak/generic page must not decide the market when
+            # another official page states the result explicitly.
+            tried_sources = []
             last_source_url = ""
             last_reason = "No conclusive authoritative source"
 
-            for attempt in range(2):
-                previous_source_note = ""
-                if last_source_url:
-                    previous_source_note = (
-                        "\nPREVIOUS SOURCE TO AVOID:\n"
-                        + last_source_url
-                        + "\nSelect a DIFFERENT authoritative URL."
+            for attempt in range(4):
+                avoid_note = ""
+                if tried_sources:
+                    avoid_note = (
+                        "\nALREADY TRIED — DO NOT RETURN ANY OF THESE URLS:\n"
+                        + "\n".join(tried_sources)
                     )
 
                 source_prompt = f"""
-You are selecting the authoritative source for a
-prediction market.
+You are selecting evidence for a decentralized
+prediction-market oracle.
 
 QUESTION:
 {question}
 
 ENFORCED AUTHORITY DOMAIN:
 {domain}
-{previous_source_note}
+{avoid_note}
 
-Select ONE publicly accessible HTTPS page belonging
-to the exact authority domain "{domain}" or one of
-its subdomains.
+Return ONE official HTTPS page from {domain} or one
+of its subdomains whose HUMAN-READABLE BODY CONTENT
+most directly answers the exact question.
 
-SOURCE QUALITY POLICY:
+SOURCE QUALITY RULES, IN PRIORITY ORDER:
 
-1. Prefer an official article, press release, report,
-   recap, announcement, or other stable page whose
-   HUMAN-READABLE TEXT directly states the fact needed
-   to resolve the question.
-2. Avoid homepages, search pages, live trackers, live
-   match centers, interactive dashboards, and pages
-   whose result exists mainly in JavaScript widgets
-   when a stable textual page is available.
-3. The URL MUST belong to {domain} or a subdomain
-   of {domain}.
-4. Do NOT use Wikipedia unless wikipedia.org is the
-   configured authority.
-5. Do NOT use search engines as the final source.
-6. Do NOT use another news site or another domain.
-7. Return ONLY one HTTPS URL.
-8. No explanation, markdown, or quotes.
+1. Prefer a page that explicitly states the outcome
+   needed to answer the question — for example an
+   official final result, recap, winner/champion page,
+   press release, decision, report, announcement, or
+   completed-event summary.
+2. Prefer a specific event/result page over a generic
+   overview, homepage, archive, "full list", search
+   page, live tracker, or interactive dashboard.
+3. The answer must be supported by visible page text
+   or rendered page content, not merely implied by the
+   URL, title, metadata, or your prior knowledge.
+4. Select a DIFFERENT URL from every page listed under
+   ALREADY TRIED.
+5. Never use a search engine, Wikipedia, another news
+   site, or a different authority as the final source.
+6. Before returning the URL, check that the page is
+   likely to contain a direct sentence, score, table,
+   ruling, number, or statement that resolves the
+   proposition.
+7. Return ONLY one HTTPS URL. No explanation, markdown,
+   labels, or quotes.
 """
 
                 try:
                     source_url = (
-                        gl.nondet.exec_prompt(
-                            source_prompt
-                        )
+                        gl.nondet.exec_prompt(source_prompt)
                         .strip()
                         .splitlines()[0]
                         .strip()
@@ -535,69 +560,53 @@ SOURCE QUALITY POLICY:
                     last_reason = "Source selection failed"
                     continue
 
-                # Enforce authority deterministically on EVERY attempt.
-                if not self._url_matches_domain(
-                    source_url,
-                    domain,
-                ):
+                if not self._url_matches_domain(source_url, domain):
                     last_source_url = source_url
                     last_reason = "Authority policy violation"
                     continue
 
-                # Do not accept the same URL twice.
-                if (
-                    last_source_url
-                    and source_url == last_source_url
-                ):
+                if source_url in tried_sources:
                     last_reason = "Duplicate source selected"
                     continue
 
+                tried_sources.append(source_url)
                 last_source_url = source_url
 
-                # Dynamic pages may need a browser wait. First try
-                # readable text; then rendered HTML from the SAME URL.
+                # Prefer rendered readable text for modern/dynamic sites.
                 try:
                     source_text = gl.nondet.web.render(
                         source_url,
                         mode="text",
-                        wait_after_loaded="5s",
+                        wait_after_loaded="8s",
                     )
                 except Exception:
                     source_text = ""
 
-                if (
-                    not source_text
-                    or len(source_text) < 200
-                ):
+                if not source_text or len(source_text) < 200:
                     try:
                         source_text = gl.nondet.web.render(
                             source_url,
                             mode="html",
-                            wait_after_loaded="5s",
+                            wait_after_loaded="8s",
                         )
                     except Exception:
                         source_text = ""
 
-                if (
-                    not source_text
-                    or len(source_text) < 200
-                ):
+                if not source_text or len(source_text) < 200:
                     last_reason = (
-                        "Authoritative source contained "
-                        "insufficient evidence after rendered-text "
-                        "and HTML fallback"
+                        "Authoritative page could not provide enough "
+                        "rendered evidence"
                     )
                     continue
 
-                if len(source_text) > 10000:
-                    source_text = source_text[:10000]
+                evidence = self._evidence_window(source_text)
 
                 judge_prompt = f"""
 You are the leader of a decentralized prediction
 market oracle.
 
-Resolve the question using ONLY the authoritative
-evidence below.
+Resolve the QUESTION using ONLY the authoritative
+evidence copied from the official page below.
 
 QUESTION:
 {question}
@@ -609,91 +618,68 @@ SOURCE URL:
 {source_url}
 
 <AUTHORITATIVE_EVIDENCE>
-{source_text}
+{evidence}
 </AUTHORITATIVE_EVIDENCE>
 
 Return EXACTLY ONE label:
-
 YES
 NO
 UNKNOWN
 TOO_EARLY
 
-Definitions:
-
-YES
-The authoritative evidence conclusively confirms
+YES = the evidence explicitly and conclusively confirms
 the proposition.
-
-NO
-The authoritative evidence conclusively disproves
+NO = the evidence explicitly and conclusively disproves
 the proposition.
+UNKNOWN = the page is related but does not actually
+state enough facts to decide YES or NO, or the evidence
+is unavailable/ambiguous.
+TOO_EARLY = the underlying event is still pending or
+has not happened yet.
 
-UNKNOWN
-The authoritative evidence is unavailable,
-insufficient, ambiguous, irrelevant, or does not
-conclusively establish YES or NO.
-
-TOO_EARLY
-The authoritative evidence indicates that the
-underlying event has not happened yet or is still
-pending.
-
-IMPORTANT:
-
-Use the page content as evidence, not merely words
-in the URL.
-Output ONE LABEL ONLY.
-Do not explain.
-Do not use punctuation.
-Do not output any additional text.
+Important:
+- Judge the proposition, not whether the page is about
+  the same topic.
+- A score, named winner/champion, official decision,
+  published figure, or equally direct statement counts
+  as conclusive evidence when it answers the question.
+- Do not infer a result merely from the URL or title.
+- Output ONE LABEL ONLY.
 """
 
                 try:
-                    ai_response = gl.nondet.exec_prompt(
-                        judge_prompt
-                    )
                     decision = self._parse_verdict(
-                        ai_response
+                        gl.nondet.exec_prompt(judge_prompt)
                     )
                 except Exception:
                     last_reason = "Leader adjudication failed"
                     continue
 
-                # YES / NO are conclusive. TOO_EARLY is also a valid
-                # terminal label for a genuinely unresolved future event.
-                if decision in [
-                    "YES",
-                    "NO",
-                    "TOO_EARLY",
-                ]:
+                if decision in ["YES", "NO", "TOO_EARLY"]:
                     return json.dumps({
                         "decision": decision,
                         "source_url": source_url,
                         "reason": (
-                            "Leader independently fetched and "
-                            "evaluated an enforced authoritative source"
+                            "Conclusive result found on an enforced "
+                            "authoritative source after multi-source review"
                         ),
                     })
 
-                # Text/HTML was inconclusive. Inspect a screenshot of
-                # the SAME authoritative URL with a vision-capable model.
+                # If extracted text is inconclusive, independently inspect
+                # the rendered page visually before abandoning this URL.
                 try:
                     source_image = gl.nondet.web.render(
                         source_url,
                         mode="screenshot",
-                        wait_after_loaded="5s",
+                        wait_after_loaded="8s",
                     )
                     vision_prompt = f"""
 Resolve the prediction-market QUESTION using ONLY
 what is visibly shown in this screenshot of the
-authoritative page.
+official authoritative page.
 
 QUESTION:
 {question}
-
-ENFORCED AUTHORITY DOMAIN:
-{domain}
 
 SOURCE URL:
 {source_url}
@@ -704,43 +690,43 @@ NO
 UNKNOWN
 TOO_EARLY
 
-Do not infer a result merely from the URL.
-Output ONE LABEL ONLY. No explanation.
+A visible score, winner/champion, ruling, result, or
+other direct statement is conclusive when it answers
+the question. Do not infer from the URL.
+Output ONE LABEL ONLY.
 """
-                    vision_raw = gl.nondet.exec_prompt(
-                        vision_prompt,
-                        images=[source_image],
-                    )
                     vision_decision = self._parse_verdict(
-                        vision_raw
+                        gl.nondet.exec_prompt(
+                            vision_prompt,
+                            images=[source_image],
+                        )
                     )
                 except Exception:
                     vision_decision = "UNKNOWN"
 
-                if vision_decision in [
-                    "YES",
-                    "NO",
-                    "TOO_EARLY",
-                ]:
+                if vision_decision in ["YES", "NO", "TOO_EARLY"]:
                     return json.dumps({
                         "decision": vision_decision,
                         "source_url": source_url,
                         "reason": (
-                            "Leader used authoritative screenshot "
-                            "fallback after text was inconclusive"
+                            "Conclusive result found from an enforced "
+                            "authoritative page using screenshot fallback"
                         ),
                     })
 
                 last_reason = (
-                    "Text and screenshot evidence were inconclusive; "
-                    "alternate authoritative source also did not "
-                    "conclusively establish YES or NO"
+                    "Authoritative page was relevant but inconclusive; "
+                    "continued to another distinct official source"
                 )
 
             return json.dumps({
                 "decision": "UNKNOWN",
                 "source_url": last_source_url,
-                "reason": last_reason,
+                "reason": (
+                    "No conclusive YES/NO evidence was found after "
+                    "reviewing up to four distinct pages on the enforced "
+                    "authority domain"
+                ),
             })
 
         # ========================================================
@@ -865,10 +851,9 @@ Output ONE LABEL ONLY. No explanation.
                         == "UNKNOWN"
                     )
 
-                if len(validator_source) > 10000:
-                    validator_source = (
-                        validator_source[:10000]
-                    )
+                validator_evidence = self._evidence_window(
+                    validator_source
+                )
 
                 validator_prompt = f"""
 You are an independent validator in a decentralized
@@ -887,7 +872,7 @@ SOURCE URL:
 {source_url}
 
 <AUTHORITATIVE_EVIDENCE>
-{validator_source}
+{validator_evidence}
 </AUTHORITATIVE_EVIDENCE>
 
 Return EXACTLY ONE label:
@@ -909,14 +894,18 @@ the proposition.
 
 UNKNOWN
 The evidence is unavailable, insufficient,
-ambiguous, irrelevant, or does not conclusively
-establish YES or NO.
+ambiguous, irrelevant, or does not actually state
+enough facts to establish YES or NO.
 
 TOO_EARLY
 The event has not happened yet or remains pending.
 
 IMPORTANT:
 
+A score, named winner/champion, official decision,
+published figure, or equally direct statement counts
+as conclusive evidence when it answers the question.
+Do not infer a result merely from the URL or title.
 Output ONE LABEL ONLY.
 Do not explain.
 Do not use punctuation.

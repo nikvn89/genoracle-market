@@ -1,263 +1,102 @@
-# 🧪 GenOracle — Testing & Verification
+# TESTING — GenOracle V7
 
-This document records the main tests performed against the deployed GenOracle Intelligent Contract and frontend on GenLayer Studionet.
-
-## Deployment Under Test
-
-**Intelligent Contract**
+Final deployed contract:
 
 ```text
-0xfB95876f2537df9ecD95D41cCc29bD1465691D4E
+0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
 ```
 
-**Explorer**
+Explorer:
 
-https://explorer-studio.genlayer.com/address/0xfB95876f2537df9ecD95D41cCc29bD1465691D4E
+https://explorer-studio.genlayer.com/address/0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
 
-**Frontend**
+Frontend:
 
-https://genoracle-market-nik.vercel.app/
+https://genoracle-market.vercel.app
 
----
-
-
-## 0. Fresh-wallet onboarding check
-
-### Objective
-
-Verify that a first-time visitor can connect a fresh MetaMask without already having GenLayer Studionet configured.
-
-### Frontend checks implemented
-
-1. Start MetaMask on a non-GenLayer network.
-2. Select `Connect Wallet`.
-3. The app requests chain `61999` (`0xf22f`).
-4. If Studionet is unknown to MetaMask, the app requests `wallet_addEthereumChain` using the official Studionet RPC.
-5. The header displays the connected network, demo G-USD balance, and native GEN balance.
-6. If the user manually switches away from Studionet, write actions are disabled and the app shows a wrong-network warning.
-7. If the user changes MetaMask accounts, the frontend updates the active account and wallet status.
-
-### Native GEN preflight
-
-The frontend reads `eth_getBalance` after connection and displays the native GEN balance. A zero balance is surfaced before the user submits a write. Demo G-USD from the contract faucet is not treated as gas.
-
-GenLayer documentation states that Studionet provides a built-in GEN faucet in the Studio account selector. If a fresh external MetaMask address receives an `insufficient funds` error, fund that same Studionet address there before retrying.
-
-### Manual end-to-end run still required before Explorer submission
-
-Use a MetaMask account that has never touched Studionet and record the actual result here before submitting the Project Explorer listing:
-
-```text
-Fresh wallet address: ______________________________
-Initial native GEN balance: ________________________
-Network auto-added/switched: PASS / FAIL
-Get Demo G-USD: PASS / FAIL
-Create market: PASS / FAIL
-Place bet: PASS / FAIL
-Resolve market: PASS / FAIL / NOT RUN
-Claim/refund: PASS / FAIL / NOT RUN
-Gas behavior observed: _____________________________
-Transaction / explorer links: ______________________
-```
-
-Do not mark this test PASS until it has been completed from a genuinely fresh wallet.
-
----
-## 1. Historical AI Resolution
-
-### Objective
-
-Verify that GenOracle can resolve a known real-world event using an authoritative source and GenLayer AI consensus.
+## Final End-to-End Test — PASS
 
 ### Market
 
 ```text
 Market ID:
-final-ai-test-04
+nasa-artemis-test-01
 
 Question:
-Did Argentina win the 2022 FIFA World Cup?
+Did NASA's Artemis I mission successfully return to Earth?
 
-Authoritative domain:
-fifa.com
-
-Deadline:
-2026-08-10
+Authority:
+nasa.gov
 ```
 
-### Procedure
+### Participants
 
-1. Create the market.
-2. Wait for the transaction to finalize.
-3. Close betting after the deadline.
-4. Call `resolve_market`.
-5. Wait for GenLayer consensus.
-6. Read the final market state using `get_market`.
-
-### Result
+Two MetaMask accounts were used.
 
 ```text
-Status:
+Wallet A → YES 200 G-USD
+Wallet B → NO  200 G-USD
+```
+
+Final pools:
+
+```text
+YES pool = 200 G-USD
+NO pool  = 200 G-USD
+Total    = 400 G-USD
+```
+
+### Evidence
+
+Official NASA source:
+
+`https://www.nasa.gov/centers-and-facilities/hq/splashdown-nasas-orion-returns-to-earth-after-historic-moon-mission/`
+
+The evidence was submitted only after the betting deadline.
+
+### Resolution
+
+After the 1-minute evidence window:
+
+1. **Resolve with GenLayer AI** was clicked once.
+2. Double-submit protection locked the button.
+3. GenLayer consensus finalized successfully.
+4. The frontend automatically detected accepted onchain state without requiring manual Refresh.
+5. Market state changed to:
+
+```text
 RESOLVED_YES
 ```
 
-The contract stored the authoritative source:
+The rendered NASA source included quote-grounded evidence that Orion returned safely to Earth and completed the Artemis I flight test.
+
+### Claim
+
+The winning YES wallet had:
 
 ```text
-https://www.fifa.com/tournaments/mens/worldcup/qatar2022
+800 G-USD after placing its 200 G-USD bet.
 ```
 
-Resolution reason:
+After `claim_winnings` finalized:
 
 ```text
-YES — verified from authoritative source
+Balance = 1200 G-USD
 ```
 
-### Verification
+Therefore:
 
-**PASS ✅**
+```text
+Payout = 400 G-USD
+```
 
-The known historical outcome was correctly adjudicated as YES using the configured FIFA authority.
+The user's YES position became `0 G-USD` and the Claim button disappeared.
 
-The result, authoritative source, and resolution reason were persisted in contract state and displayed by the frontend.
+**Result: PASS**
 
 ---
 
-## 2. Two-Wallet Betting
-
-### Objective
-
-Verify that multiple wallets can take opposing positions in the same market and that positions are tracked independently.
-
-### Test Market
-
-```text
-Market ID:
-two-wallet-final-01
-```
-
-### Wallet A
-
-Position:
-
-```text
-YES: 100 G-USD
-```
-
-### Wallet B
-
-Position:
-
-```text
-NO: 100 G-USD
-```
-
-### Resulting Pools
-
-```text
-YES Pool: 100 G-USD
-NO Pool: 100 G-USD
-```
-
-When Wallet B was connected, the frontend displayed:
-
-```text
-Your YES: 0 G-USD
-Your NO: 100 G-USD
-```
-
-The global market pools remained unchanged when switching wallets.
-
-### Verification
-
-**PASS ✅**
-
-The contract correctly maintained:
-
-- global YES pool
-- global NO pool
-- independent YES positions
-- independent NO positions
-- wallet-specific balances
-
-This confirms that GenOracle supports genuine multi-wallet market participation rather than frontend-only simulated positions.
-
----
-
-## 3. Demo G-USD Faucet
-
-### Objective
-
-Verify that users can obtain demo funds required for Studionet testing.
-
-### Procedure
-
-1. Connect wallet.
-2. Select `Get Demo G-USD`.
-3. Wait for transaction finalization.
-4. Refresh contract state.
-
-### Observed Result
-
-```text
-Balance:
-1000 G-USD
-```
-
-The balance can then be used for YES/NO positions.
-
-### Verification
-
-**PASS ✅**
-
-Demo funds were successfully issued and reflected in the frontend balance.
-
----
-
-## 4. Deadline Enforcement
-
-### Objective
-
-Verify that betting and settlement follow the market deadline.
-
-### Before Deadline
-
-For an OPEN market whose deadline has not passed:
-
-```text
-Bet YES     → available
-Bet NO      → available
-Close       → unavailable
-Resolve     → unavailable
-```
-
-### After Deadline
-
-Once the deadline has passed:
-
-```text
-New bets    → blocked
-Close       → available
-Resolve     → available after closing
-```
-
-### Verification
-
-**PASS ✅**
-
-The tested active market remained open for betting while its deadline was in the future, and the frontend correctly prevented premature settlement actions.
-
-Historical settlement was successfully executed after its deadline.
-
----
-
-## 5. Authority-Bound Resolution
-
-### Objective
-
-Verify that a market's adjudication is tied to its predefined authoritative domain.
-
-Historical test configuration:
+## Secondary Resolution Test — PASS
 
 ```text
 Question:
@@ -267,244 +106,65 @@ Authority:
 fifa.com
 ```
 
-Final evidence:
+Evidence:
 
-```text
-https://www.fifa.com/tournaments/mens/worldcup/qatar2022
-```
+`https://www.fifa.com/en/tournaments/mens/worldcup/articles/argentina-france-2022-final-greatest-games`
 
-### Verification
-
-**PASS ✅**
-
-The final resolution used a source belonging to the configured authoritative domain.
-
-This prevents the resolver from freely substituting unrelated web sources during adjudication.
-
----
-
-## 6. Dynamic Web / Vision Fallback
-
-### Objective
-
-Verify resolution against authoritative websites whose relevant information may not be reliably exposed through simple text extraction.
-
-Earlier resolver tests against FIFA could locate relevant FIFA pages but returned:
-
-```text
-UNKNOWN
-```
-
-because the extracted page content was insufficient for a conclusive verdict.
-
-The final resolver adds an authoritative screenshot/vision fallback when textual evidence is inconclusive.
-
-The final historical test then produced:
+Result:
 
 ```text
 RESOLVED_YES
 ```
 
-### Verification
+The final result stored:
 
-**PASS ✅**
+- the authoritative FIFA source,
+- a verbatim quote grounded in the rendered page,
+- an AI resolution reason.
 
-The fallback successfully allowed the resolver to adjudicate the FIFA historical test without changing the required authoritative domain.
-
----
-
-## 7. Market History
-
-### Objective
-
-Verify that completed markets remain inspectable without cluttering the active market interface.
-
-### Observed Result
-
-After resolution, `final-ai-test-04` appeared under:
-
-```text
-Market History
-```
-
-with:
-
-```text
-RESOLVED YES
-```
-
-Selecting the historical market displayed:
-
-- final verdict
-- authoritative domain
-- authoritative source
-- AI resolution reason
-- YES pool
-- NO pool
-- wallet position
-
-### Verification
-
-**PASS ✅**
-
-Resolved markets remain auditable and are separated from currently active markets.
+**Result: PASS**
 
 ---
 
-## 8. Active Market Limits
+## Fresh-User / Frontend Checks
 
-The frontend exposes the current market capacity:
-
-```text
-Active Markets: X / 50
-```
-
-and creator capacity:
-
-```text
-Your active: X / 5
-```
-
-The intended limits are:
-
-```text
-Maximum active markets:
-50
-
-Maximum active markets per creator:
-5
-```
-
-Completed markets move into Market History instead of remaining in the active section.
-
-### Verification
-
-**PASS ✅**
-
-The frontend correctly reads active market state and displays both global and creator-specific usage counters.
-
----
-
-## 9. Wallet-Specific UI
-
-### Objective
-
-Verify that personal positions change according to the connected wallet while global market state remains consistent.
-
-For Wallet B in the two-sided betting test:
-
-```text
-YES Pool: 100 G-USD
-NO Pool: 100 G-USD
-
-Your YES: 0 G-USD
-Your NO: 100 G-USD
-```
-
-Changing the connected wallet changes `Your YES` and `Your NO` according to that wallet's contract position.
-
-Market History remains globally visible.
-
-### Verification
-
-**PASS ✅**
-
-Global market state and wallet-specific state are correctly separated.
-
----
-
-## 10. Claim UI Protection
-
-### Objective
-
-Verify that wallets without a winning/refundable position are not presented with an invalid claim action.
-
-For historical market:
-
-```text
-final-ai-test-04
-
-YES Pool: 0
-NO Pool: 0
-
-Your YES: 0
-Your NO: 0
-```
-
-The frontend does not display `Claim Winnings` for that wallet.
-
-Claim actions are shown only when the connected wallet has an eligible winning or refundable position.
-
-### Verification
-
-**PASS ✅**
-
-The final frontend correctly hides irrelevant claim actions.
-
----
-
-# Final Test Summary
-
-| Test | Result |
+| Check | Result |
 |---|---|
-| Intelligent Contract deployment | ✅ PASS |
-| Historical AI adjudication | ✅ PASS |
-| Authoritative-domain resolution | ✅ PASS |
-| FIFA real-world source | ✅ PASS |
-| AI result persistence | ✅ PASS |
-| Two-wallet betting | ✅ PASS |
-| Independent wallet positions | ✅ PASS |
-| YES/NO pool accounting | ✅ PASS |
-| Demo G-USD faucet | ✅ PASS |
-| Deadline controls | ✅ PASS |
-| Active / History separation | ✅ PASS |
-| Resolution source display | ✅ PASS |
-| AI resolution reason display | ✅ PASS |
-| Wallet-specific UI | ✅ PASS |
-| Claim UI eligibility | ✅ PASS |
-| Production frontend build | ✅ PASS |
+| Connect MetaMask | PASS |
+| StudioNet network handling | PASS |
+| Display connected network | PASS |
+| Demo G-USD faucet | PASS |
+| Create market | PASS |
+| Exact date + time deadline | PASS |
+| Bet YES | PASS |
+| Bet NO from second wallet | PASS |
+| Betting blocked after deadline | PASS |
+| Automatic OPEN → EVIDENCE UI | PASS |
+| Submit official evidence | PASS |
+| Domain enforcement | Implemented |
+| Evidence limit display | PASS |
+| 1-minute evidence window | PASS |
+| AI resolution | PASS |
+| Resolve double-submit lock | PASS |
+| Automatic accepted-state refresh | PASS |
+| Quote-grounded source display | PASS |
+| Winning claim | PASS |
+| Claimed position zeroed | PASS |
+| Market history | PASS |
 
----
+## Reviewer Test Recommendation
 
-## Production Build
+For a quick fresh-user test:
 
-The final frontend was also compiled successfully using:
+1. Connect MetaMask.
+2. Get Demo G-USD.
+3. Create a historical market with a deadline about 3 minutes ahead.
+4. Bet before the deadline.
+5. Wait for automatic EVIDENCE phase.
+6. Submit one official URL from the locked authority.
+7. Wait 1 minute.
+8. Resolve with GenLayer AI once.
+9. Wait for automatic result update.
+10. Claim if the connected wallet is on the winning side.
 
-```bash
-npm run build
-```
-
-The Vite production build completed successfully.
-
----
-
-## Conclusion
-
-GenOracle has been tested across the two core parts of the application:
-
-### Deterministic market mechanics
-
-```text
-Create
-→ Fund
-→ Bet
-→ Track positions
-→ Enforce deadline
-→ Close
-→ Claim / Refund
-```
-
-### Nondeterministic GenLayer adjudication
-
-```text
-Question
-→ Authoritative domain
-→ Web evidence
-→ AI evaluation
-→ Independent validator verification
-→ Consensus
-→ YES / NO / FAILED
-→ Persist source and reason
-```
-
-The tests demonstrate that GenOracle combines deterministic prediction-market accounting with GenLayer's nondeterministic AI consensus for real-world settlement.
+No manual Explorer interaction is required for the normal app flow.

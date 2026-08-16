@@ -100,7 +100,7 @@ const toDateTimeLocal = (date: Date) => {
 }
 
 const makeDefaultDeadline = () =>
-  toDateTimeLocal(new Date(Date.now() + 15 * 60 * 1000))
+  toDateTimeLocal(new Date(Date.now() + 3 * 60 * 1000))
 
 const MAX_ACTIVE_MARKETS = 50
 const MAX_ACTIVE_PER_CREATOR = 5
@@ -125,6 +125,9 @@ const AUTHORITY_OPTIONS = [
 const pendingKey = (account: string, marketId: string) =>
   `genoracle:v7:resolve:${CONTRACT_ADDRESS}:${account.toLowerCase()}:${marketId}`
 
+const RESOLUTION_AUTO_POLL_MS = 15_000
+const RESOLUTION_AUTO_POLL_MAX = 20
+
 function App() {
   const [account, setAccount] = useState('')
   const [markets, setMarkets] = useState<Record<string, Market>>({})
@@ -135,6 +138,7 @@ function App() {
   const [nativeBalanceWei, setNativeBalanceWei] = useState(BigInt(0))
   const [busy, setBusy] = useState<BusyAction>('')
   const actionLockRef = useRef(false)
+  const resolutionPollAttemptsRef = useRef<Record<string, number>>({})
   const [message, setMessage] = useState('')
   const [selectedId, setSelectedId] = useState('')
   const [nowMs, setNowMs] = useState(Date.now())
@@ -308,6 +312,88 @@ function App() {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!account) return
+
+    const pendingIds = Object.keys(pendingResolutions)
+    if (pendingIds.length === 0) return
+
+    let cancelled = false
+
+    const pollPending = async () => {
+      for (const marketId of pendingIds) {
+        if (cancelled) return
+
+        const pending = pendingResolutions[marketId]
+        if (!pending) continue
+
+        const attempts = resolutionPollAttemptsRef.current[marketId] ?? 0
+
+        if (attempts >= RESOLUTION_AUTO_POLL_MAX) {
+          continue
+        }
+
+        resolutionPollAttemptsRef.current[marketId] = attempts + 1
+
+        try {
+          const updated = await genOracle.getMarket(marketId)
+          if (!updated || cancelled) continue
+
+          setMarkets((current) => ({
+            ...current,
+            [marketId]: updated,
+          }))
+
+          const settled =
+            ['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(
+              effectiveStatus(updated),
+            ) ||
+            (updated.resolution_attempts ?? 0) > pending.attemptCount
+
+          if (settled) {
+            localStorage.removeItem(pendingKey(account, marketId))
+
+            setPendingResolutions((current) => {
+              const next = { ...current }
+              delete next[marketId]
+              return next
+            })
+
+            delete resolutionPollAttemptsRef.current[marketId]
+
+            if (
+              ['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(
+                effectiveStatus(updated),
+              )
+            ) {
+              setMessage(
+                `Consensus settled automatically: ${statusLabel(updated)}.`,
+              )
+            } else {
+              setMessage(
+                'Consensus attempt settled. Review the latest evidence result.',
+              )
+            }
+          }
+        } catch {
+          // Silent by design: manual Refresh remains the fallback.
+        }
+      }
+    }
+
+    void pollPending()
+
+    const timer = window.setInterval(
+      () => void pollPending(),
+      RESOLUTION_AUTO_POLL_MS,
+    )
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [account, pendingResolutions])
 
   useEffect(() => {
     const unsubscribe = subscribeWalletEvents({
@@ -506,7 +592,7 @@ function App() {
       )
 
       setMessage(
-        `AI resolution submitted (${short(hash)}). This button is locked until accepted onchain state shows the attempt has settled. Use Refresh after consensus finalizes.`,
+        `AI resolution submitted (${short(hash)}). Double-submit protection is active. The app will check accepted onchain state automatically every 15 seconds.`,
       )
     })
 
@@ -538,9 +624,14 @@ function App() {
       setMessage('Accepted onchain state refreshed.')
     })
 
-  const selectedPhase = selected ? effectiveStatus(selected) : undefined
   const deadlinePassed =
     !!selected && nowTs >= Number(selected.deadline_ts ?? 0)
+
+  const selectedPhase: MarketStatus | undefined = selected
+    ? effectiveStatus(selected) === 'OPEN' && deadlinePassed
+      ? 'EVIDENCE'
+      : effectiveStatus(selected)
+    : undefined
 
   const canBet =
     !!selected &&
@@ -738,7 +829,7 @@ function App() {
               />
               <small>
                 Local date and time. The app converts it to the Unix timestamp required by V7.
-                Evidence opens immediately after this time; AI resolution opens 10 minutes later.
+                Evidence opens immediately after this time; AI resolution opens 1 minute later.
               </small>
             </label>
 
@@ -1122,8 +1213,8 @@ function App() {
                     {resolutionPending ? (
                       <p className="hint warning">
                         Double-submit protection is active. Do not send another
-                        resolution transaction. Refresh after the Explorer shows
-                        FINALIZED / Accepted.
+                        resolution transaction. The app checks accepted onchain
+                        state automatically; Refresh remains available as a fallback.
                       </p>
                     ) : null}
 

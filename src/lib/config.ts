@@ -1,6 +1,6 @@
 export const CONTRACT_ADDRESS =
   (import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}` | undefined) ??
-  '0x6578dD9ea3d58D6a46875e277A1678B2Ff61e579'
+  '0x3436a79298Ea6a70f0d623484c26EAD22abB628b'
 
 // Same-origin app RPC. Vercel/Vite forwards this to Studionet.
 export const STUDIO_RPC =

@@ -24,7 +24,7 @@ class PredictionMarketContract(gl.Contract):
         return int(datetime.now(timezone.utc).timestamp())
 
     def _evidence_window(self) -> int:
-        return 600  # 10 minutes
+        return 60  # 1 minute — demo/reviewer friendly
 
     def _expiry_period(self) -> int:
         return 30 * 24 * 60 * 60  # 30 days

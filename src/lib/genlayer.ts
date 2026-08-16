@@ -34,6 +34,55 @@ export type WalletEventHandlers = {
   onAccountsChanged?: (accounts: string[]) => void
 }
 
+export type EvidenceItem = {
+  url: string
+  normalized_url?: string
+  submitter: string
+  submitted_at: number
+}
+
+export type MarketStatus =
+  | 'OPEN'
+  | 'EVIDENCE'
+  | 'RESOLVED_YES'
+  | 'RESOLVED_NO'
+  | 'FAILED'
+
+export type Market = {
+  creator?: string
+  question: string
+  authoritative_domain: string
+  created_at?: number
+  deadline_ts: number
+  resolve_open_at: number
+  expiry_at: number
+  status: MarketStatus
+  effective_status?: MarketStatus
+  yes_pool: number
+  no_pool: number
+  yes_positions: Record<string, number>
+  no_positions: Record<string, number>
+  evidence: EvidenceItem[]
+  evidence_counts?: Record<string, number>
+  last_attempt_evidence_count: number
+  resolution_attempts: number
+  resolution_reason?: string
+  resolution_source?: string
+  resolution_quote?: string
+}
+
+export type ContractState = {
+  balances: Record<string, number>
+  claimed_faucet: string[]
+}
+
+export type ContractConfig = {
+  evidence_window_seconds: number
+  expiry_period_seconds: number
+  max_evidence_urls: number
+  max_evidence_per_address: number
+}
+
 export const normalizeAddress = (address: string) => getAddress(address)
 
 export const getClient = (account?: string) => {
@@ -159,7 +208,7 @@ export async function getWalletStatus(
       nativeBalanceWei = BigInt(rawBalance)
     }
   } catch {
-    // Balance visibility helps onboarding, but should not make wallet connection fail.
+    // Native balance is informational on Studionet.
   }
 
   return {
@@ -194,6 +243,7 @@ export async function connectWallet(): Promise<WalletConnection> {
   }
 
   const status = await getWalletStatus(accounts[0])
+
   if (!status.isStudionet) {
     throw new Error(
       'MetaMask is not connected to GenLayer Studio Network. Switch to chain 61999 and try again.',
@@ -213,6 +263,7 @@ export function subscribeWalletEvents({
   const handleChainChanged = (chainHex: string) => {
     onChainChanged?.(chainIdFromHex(chainHex))
   }
+
   const handleAccountsChanged = (accounts: string[]) => {
     onAccountsChanged?.(accounts ?? [])
   }
@@ -274,7 +325,7 @@ async function writeAsync(
   return { hash }
 }
 
-async function read(functionName: string, args: Array<string>) {
+async function read(functionName: string, args: Array<string | number> = []) {
   const client = getClient()
 
   return client.readContract({
@@ -283,25 +334,6 @@ async function read(functionName: string, args: Array<string>) {
     args,
     stateStatus: 'accepted',
   } as any)
-}
-
-export type Market = {
-  creator?: string
-  question: string
-  authoritative_domain: string
-  deadline: string
-  status: 'OPEN' | 'CLOSED_FOR_BETTING' | 'RESOLVED_YES' | 'RESOLVED_NO' | 'FAILED'
-  yes_pool: number
-  no_pool: number
-  yes_positions: Record<string, number>
-  no_positions: Record<string, number>
-  resolution_reason?: string
-  resolution_source?: string
-}
-
-export type ContractState = {
-  balances: Record<string, number>
-  claimed_faucet: string[]
 }
 
 function parseJson<T>(value: unknown, fallback: T): T {
@@ -326,13 +358,13 @@ export const genOracle = {
     marketId: string,
     question: string,
     authoritativeDomain: string,
-    deadline: string,
+    deadlineTs: number,
   ) =>
     write(account, 'create_market', [
       marketId.trim(),
       question.trim(),
       authoritativeDomain.trim(),
-      deadline.trim(),
+      deadlineTs,
     ]),
 
   placeBet: (
@@ -351,16 +383,43 @@ export const genOracle = {
   closeBetting: (account: string, marketId: string) =>
     write(account, 'close_betting', [marketId]),
 
+  submitEvidence: (
+    account: string,
+    marketId: string,
+    url: string,
+  ) =>
+    write(account, 'submit_evidence', [
+      marketId,
+      url.trim(),
+    ]),
+
   resolveMarket: (account: string, marketId: string) =>
     writeAsync(account, 'resolve_market', [marketId]),
 
+  expireMarket: (account: string, marketId: string) =>
+    write(account, 'expire_market', [marketId]),
+
   claimWinnings: (account: string, marketId: string) =>
-    write(account, 'claim_winnings', [marketId, normalizeAddress(account)]),
+    write(account, 'claim_winnings', [
+      marketId,
+      normalizeAddress(account),
+    ]),
 
   getState: async (): Promise<ContractState> =>
     parseJson<ContractState>(
-      await read('get_state', []),
+      await read('get_state'),
       { balances: {}, claimed_faucet: [] },
+    ),
+
+  getConfig: async (): Promise<ContractConfig> =>
+    parseJson<ContractConfig>(
+      await read('get_config'),
+      {
+        evidence_window_seconds: 600,
+        expiry_period_seconds: 30 * 24 * 60 * 60,
+        max_evidence_urls: 3,
+        max_evidence_per_address: 2,
+      },
     ),
 
   getMarket: async (marketId: string): Promise<Market | null> => {
@@ -371,7 +430,7 @@ export const genOracle = {
 
   getAllMarkets: async (): Promise<Record<string, Market>> =>
     parseJson<Record<string, Market>>(
-      await read('get_all_markets', []),
+      await read('get_all_markets'),
       {},
     ),
 }

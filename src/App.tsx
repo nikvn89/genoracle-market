@@ -740,90 +740,570 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
-          <div className="brand-lockup">
-            <span className="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#04101d" strokeWidth="2.1"
-                   strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="8.4" />
-                <path d="M3.6 12h16.8" />
-                <path d="M12 3.6c2.2 2.4 3.3 5.3 3.3 8.4s-1.1 6-3.3 8.4c-2.2-2.4-3.3-5.3-3.3-8.4S9.8 6 12 3.6z" />
-              </svg>
-            </span>
-            <div>
-              <div className="eyebrow">GENLAYER STUDIONET</div>
-              <h1>GenOracle</h1>
-            </div>
+        <a className="brand" href="#top" aria-label="GenOracle home">
+          <img src="/genoracle-logo.png" alt="GenOracle" className="brand-logo" />
+          <div className="brand-copy">
+            <strong>GenOracle</strong>
+            <span>Official-evidence prediction markets</span>
           </div>
-          <p className="subtitle">
-            Authority-bound AI prediction markets with permissionless official evidence.
-          </p>
-        </div>
+        </a>
+
+        <nav className="topnav" aria-label="Page sections">
+          <a href="#markets">Explore</a>
+          <a href="#create-market">Create</a>
+        </nav>
 
         <div className="wallet-panel">
-          <div className="contract-chip">
-            Contract {short(CONTRACT_ADDRESS)}
+          <div className={`network-pill ${isStudionet ? 'ok' : 'wrong'}`}>
+            {isStudionet
+              ? `● ${STUDIONET.name}`
+              : `⚠ Wrong network${networkId ? ` · ${networkId}` : ''}`}
           </div>
 
           {account ? (
-            <>
-              <div className="wallet-address">{short(account)}</div>
-              <div className={`network-chip ${isStudionet ? 'ok' : 'wrong'}`}>
-                {isStudionet
-                  ? `● ${STUDIONET.name}`
-                  : `⚠ Wrong network${networkId ? ` (chain ${networkId})` : ''}`}
-              </div>
-              <div className="balance">{balance} G-USD</div>
-              <div className="native-balance">
-                Native gas: {nativeGenBalance} {STUDIONET.currencySymbol}
-              </div>
-            </>
+            <div className="balance-pill">
+              <strong>{balance} G-USD</strong>
+              <span>{nativeGenBalance} {STUDIONET.currencySymbol} gas</span>
+            </div>
           ) : null}
 
           <button
-            className="button primary"
+            className="button faucet"
+            onClick={handleFaucet}
+            disabled={busy !== '' || !account || !isStudionet}
+          >
+            {busy === 'faucet' ? 'Processing…' : 'Get Demo G-USD'}
+          </button>
+
+          <button
+            className="button wallet"
             onClick={handleConnect}
             disabled={busy !== ''}
           >
             {account && isStudionet
-              ? 'Wallet Connected'
+              ? short(account)
               : busy === 'connect'
                 ? 'Connecting…'
                 : account
                   ? 'Switch to GenLayer'
                   : 'Connect Wallet'}
           </button>
-
-          {account ? (
-            <button
-              className="button ghost"
-              onClick={handleFaucet}
-              disabled={busy !== '' || !isStudionet}
-            >
-              {busy === 'faucet' ? 'Processing…' : 'Get Demo G-USD'}
-            </button>
-          ) : null}
         </div>
       </header>
 
-      <section className="steward-banner">
-        <strong>Oracle policy:</strong> the market locks an authoritative domain before betting.
-        After the deadline, anyone may point GenLayer validators at official URLs on that domain.
-        Submitters do not choose YES or NO; validators independently render and judge the evidence.
-      </section>
+      <main id="top" className="page">
+        <section className="hero">
+          <div className="hero-copy">
+            <span className="kicker">AUTHORITY-BOUND PREDICTION MARKETS</span>
+            <h1>
+              Markets that settle from
+              <em> official evidence.</em>
+            </h1>
+            <p>
+              Lock the source before betting. After the deadline, official URLs become
+              evidence and GenLayer validators independently decide the outcome.
+            </p>
 
-      {message ? <div className="notice">{message}</div> : null}
+            <div className="hero-actions">
+              <a className="hero-button primary-link" href="#markets">Explore Markets</a>
+              <a className="hero-button secondary-link" href="#create-market">Create Market</a>
+            </div>
 
-      <main className="grid">
-        <section className="panel create-panel">
-          <div className="panel-heading">
-            <div>
-              <div className="step">01</div>
-              <h2>Create Market</h2>
+            <div className="hero-chips">
+              <span>Official domains</span>
+              <span>Permissionless evidence</span>
+              <span>AI validator consensus</span>
             </div>
           </div>
 
-          <form onSubmit={handleCreate} className="form">
+          <div className="hero-flow" aria-label="GenOracle market lifecycle">
+            <div className="flow-node active">
+              <span>01</span>
+              <strong>Predict</strong>
+              <small>YES / NO positions</small>
+            </div>
+            <div className="flow-arrow">→</div>
+            <div className="flow-node">
+              <span>02</span>
+              <strong>Prove</strong>
+              <small>Official URLs only</small>
+            </div>
+            <div className="flow-arrow">→</div>
+            <div className="flow-node">
+              <span>03</span>
+              <strong>Consensus</strong>
+              <small>GenLayer judges</small>
+            </div>
+            <div className="flow-arrow">→</div>
+            <div className="flow-node">
+              <span>04</span>
+              <strong>Settle</strong>
+              <small>Claim or refund</small>
+            </div>
+          </div>
+        </section>
+
+        <section className="policy-strip">
+          <strong>Oracle policy</strong>
+          <span>
+            Every market commits an authoritative domain before betting. Evidence must
+            come from that domain or its subdomains; submitters never choose YES or NO.
+          </span>
+          <code>{short(CONTRACT_ADDRESS)}</code>
+        </section>
+
+        {message ? <div className="notice">{message}</div> : null}
+
+        <section id="markets" className="explore-layout">
+          <aside className="markets-panel panel">
+            <div className="panel-heading">
+              <div>
+                <span className="section-label">EXPLORE</span>
+                <h2>Live markets</h2>
+              </div>
+              <button
+                className="icon-button"
+                onClick={refreshUi}
+                disabled={busy !== ''}
+                title="Refresh accepted state"
+              >
+                {busy === 'refresh' ? '…' : '↻'}
+              </button>
+            </div>
+
+            <div className="market-counts">
+              <span>{activeMarkets.length} active</span>
+              <span>{historyMarkets.length} settled</span>
+            </div>
+
+            <div className="market-list">
+              {activeMarkets.length === 0 ? (
+                <div className="empty compact-empty">
+                  <EmptyIcon />
+                  <span>
+                    <b>No active markets yet</b>
+                    Create one below to begin.
+                  </span>
+                </div>
+              ) : (
+                activeMarkets.map(([id, market]) => (
+                  <button
+                    key={id}
+                    className={`market-card ${selectedId === id ? 'active' : ''}`}
+                    onClick={() => setSelectedId(id)}
+                  >
+                    <div className="market-card-top">
+                      <span className={`status ${statusClass(market)}`}>
+                        {statusLabel(market)}
+                      </span>
+                      <span className="market-id">#{id}</span>
+                    </div>
+
+                    <strong className="market-question">{market.question}</strong>
+                    <span className="market-authority">{market.authoritative_domain}</span>
+
+                    <div className="mini-split">
+                      <span>YES {market.yes_pool}</span>
+                      <span>NO {market.no_pool}</span>
+                    </div>
+                    <PoolBar yes={market.yes_pool} no={market.no_pool} />
+
+                    <div className="market-footer">
+                      <span>{Number(market.yes_pool || 0) + Number(market.no_pool || 0)} G-USD pool</span>
+                      <span>{formatDateTime(market.deadline_ts)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <button
+              className="history-toggle"
+              onClick={() => setHistoryOpen((value) => !value)}
+            >
+              <span>Settled history</span>
+              <span>{historyOpen ? '−' : '+'}</span>
+            </button>
+
+            {historyOpen ? (
+              <div className="market-list history-list">
+                {historyMarkets.slice(0, historyVisible).map(([id, market]) => (
+                  <button
+                    key={id}
+                    className={`market-card history-card ${selectedId === id ? 'active' : ''}`}
+                    onClick={() => setSelectedId(id)}
+                  >
+                    <div className="market-card-top">
+                      <span className={`status ${statusClass(market)}`}>
+                        {statusLabel(market)}
+                      </span>
+                      <span className="market-id">#{id}</span>
+                    </div>
+                    <strong className="market-question">{market.question}</strong>
+                    <span className="market-authority">{market.authoritative_domain}</span>
+                    <div className="mini-split">
+                      <span>YES {market.yes_pool}</span>
+                      <span>NO {market.no_pool}</span>
+                    </div>
+                  </button>
+                ))}
+
+                {historyVisible < historyMarkets.length ? (
+                  <button
+                    className="button subtle full"
+                    onClick={() =>
+                      setHistoryVisible((value) => value + HISTORY_PAGE_SIZE)
+                    }
+                  >
+                    Load More
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </aside>
+
+          <section className="market-detail panel">
+            {!selected ? (
+              <div className="empty tall">
+                <EmptyIcon />
+                <span>
+                  <b>Select a market</b>
+                  Pick a live or settled market to see trading, evidence and settlement.
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="selected-header">
+                  <div className="selected-title">
+                    <div className="selected-topline">
+                      <span className={`status ${statusClass(selected)}`}>
+                        {statusLabel(selected)}
+                      </span>
+                      <span className="authority-chip">
+                        Official source · {selected.authoritative_domain}
+                      </span>
+                    </div>
+                    <h2>{selected.question}</h2>
+                    <div className="selected-meta">
+                      <span>Market #{selectedId}</span>
+                      <span>Deadline {formatDateTime(selected.deadline_ts)}</span>
+                      <span>
+                        Pool {Number(selected.yes_pool || 0) + Number(selected.no_pool || 0)} G-USD
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="outcome-grid">
+                  <div className="outcome-card yes-card">
+                    <span>YES</span>
+                    <strong>{selected.yes_pool} G-USD</strong>
+                    <small>Your position: {account ? yourYes : '—'} G-USD</small>
+                  </div>
+
+                  <div className="outcome-divider">
+                    <PoolBar yes={selected.yes_pool} no={selected.no_pool} />
+                    <span>MARKET SPLIT</span>
+                  </div>
+
+                  <div className="outcome-card no-card">
+                    <span>NO</span>
+                    <strong>{selected.no_pool} G-USD</strong>
+                    <small>Your position: {account ? yourNo : '—'} G-USD</small>
+                  </div>
+                </div>
+
+                <div className="phase-bar">
+                  <div className={selectedPhase === 'OPEN' ? 'phase active' : 'phase done'}>
+                    <span>1</span><b>Predict</b>
+                  </div>
+                  <div className={selectedPhase === 'EVIDENCE' ? 'phase active' : ['RESOLVED_YES','RESOLVED_NO','FAILED'].includes(selectedPhase ?? '') ? 'phase done' : 'phase'}>
+                    <span>2</span><b>Evidence</b>
+                  </div>
+                  <div className={resolutionPending ? 'phase active' : ['RESOLVED_YES','RESOLVED_NO','FAILED'].includes(selectedPhase ?? '') ? 'phase done' : 'phase'}>
+                    <span>3</span><b>Consensus</b>
+                  </div>
+                  <div className={['RESOLVED_YES','RESOLVED_NO','FAILED'].includes(selectedPhase ?? '') ? 'phase active' : 'phase'}>
+                    <span>4</span><b>Settle</b>
+                  </div>
+                </div>
+
+                {selectedPhase === 'OPEN' ? (
+                  <div className="action-layout">
+                    <section className="action-card">
+                      <span className="section-label">TRADE</span>
+                      <h3>Take a position</h3>
+                      <label>
+                        Bet amount
+                        <div className="input-unit">
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={betAmount}
+                            onChange={(e) => setBetAmount(e.target.value)}
+                          />
+                          <span>G-USD</span>
+                        </div>
+                      </label>
+
+                      <div className="trade-actions">
+                        <button
+                          className="button yes"
+                          disabled={!canBet || busy !== ''}
+                          onClick={() => placeBet(true)}
+                        >
+                          {busy === 'bet' ? 'Submitting…' : 'Bet YES'}
+                        </button>
+                        <button
+                          className="button no"
+                          disabled={!canBet || busy !== ''}
+                          onClick={() => placeBet(false)}
+                        >
+                          {busy === 'bet' ? 'Submitting…' : 'Bet NO'}
+                        </button>
+                      </div>
+
+                      {!deadlinePassed ? (
+                        <p className="hint">
+                          Betting stays open until {formatDateTime(selected.deadline_ts)}.
+                        </p>
+                      ) : (
+                        <p className="hint warning">
+                          Deadline passed. New bets are blocked by the contract.
+                        </p>
+                      )}
+                    </section>
+
+                    <aside className="next-card">
+                      <span className="section-label">WHAT HAPPENS NEXT</span>
+                      <h3>Betting closes. Evidence opens.</h3>
+                      <p>
+                        After the deadline, anyone can submit official pages from
+                        <strong> {selected.authoritative_domain}</strong>. Validators
+                        independently render and judge the committed evidence.
+                      </p>
+                      <div className="next-facts">
+                        <div><span>Resolution opens</span><b>{formatDateTime(selected.resolve_open_at)}</b></div>
+                        <div><span>Max sources</span><b>{config.max_evidence_urls}</b></div>
+                        <div><span>Outcome picker</span><b>Validators only</b></div>
+                      </div>
+                    </aside>
+                  </div>
+                ) : null}
+
+                {selectedPhase === 'EVIDENCE' ? (
+                  <div className="evidence-layout">
+                    <section className="action-card">
+                      <span className="section-label">OFFICIAL EVIDENCE</span>
+                      <h3>Prove what happened.</h3>
+                      <p className="supporting-copy">
+                        Submit official pages from <strong>{selected.authoritative_domain}</strong>.
+                        You provide evidence; GenLayer validators choose the outcome.
+                      </p>
+
+                      <div className="evidence-list">
+                        {(selected.evidence ?? []).length === 0 ? (
+                          <div className="hint">No evidence submitted yet.</div>
+                        ) : (
+                          (selected.evidence ?? []).map((item, index) => (
+                            <div key={`${item.url}-${index}`} className="evidence-item">
+                              <div>
+                                <span>Source {index + 1}</span>
+                                <small>{short(item.submitter)}</small>
+                              </div>
+                              <a href={item.url} target="_blank" rel="noreferrer">
+                                {item.url}
+                              </a>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <label>
+                        Official evidence URL
+                        <input
+                          type="url"
+                          value={evidenceUrl}
+                          onChange={(e) => setEvidenceUrl(e.target.value)}
+                          placeholder={`https://${selected.authoritative_domain}/...`}
+                          disabled={!canSubmitEvidence || busy !== ''}
+                        />
+                      </label>
+
+                      <button
+                        className="button secondary full"
+                        disabled={
+                          !canSubmitEvidence ||
+                          busy !== '' ||
+                          !evidenceUrl.trim()
+                        }
+                        onClick={submitEvidence}
+                      >
+                        {busy === 'evidence'
+                          ? 'Submitting Evidence…'
+                          : `Submit Official Evidence (${evidenceCount}/${config.max_evidence_urls})`}
+                      </button>
+
+                      {!canSubmitEvidence &&
+                      evidenceCount >= config.max_evidence_urls ? (
+                        <p className="hint warning">
+                          Evidence set is full ({config.max_evidence_urls} URLs).
+                        </p>
+                      ) : null}
+                    </section>
+
+                    <aside className="consensus-card">
+                      <span className="section-label">GENLAYER CONSENSUS</span>
+                      <h3>
+                        {resolutionPending
+                          ? 'Validators are deciding.'
+                          : 'Resolve from committed evidence.'}
+                      </h3>
+
+                      {resolutionWaitSeconds > 0 ? (
+                        <p className="hint">
+                          Evidence collection is open. Resolution unlocks in{' '}
+                          <strong>{formatDuration(resolutionWaitSeconds)}</strong>.
+                        </p>
+                      ) : evidenceCount === 0 ? (
+                        <p className="hint warning">
+                          Submit at least one official evidence URL before resolving.
+                        </p>
+                      ) : !hasNewEvidenceForResolution ? (
+                        <p className="hint warning">
+                          Previous attempt returned UNKNOWN. New official evidence is required.
+                        </p>
+                      ) : (
+                        <p className="hint">
+                          The evidence window is complete. GenLayer can adjudicate now.
+                        </p>
+                      )}
+
+                      <button
+                        className="button primary full"
+                        disabled={!canResolve || busy !== ''}
+                        onClick={resolveMarket}
+                      >
+                        {resolutionPending
+                          ? 'Resolution Submitted — Waiting for Consensus'
+                          : busy === 'resolve'
+                            ? 'Submitting Resolution…'
+                            : 'Resolve with GenLayer AI'}
+                      </button>
+
+                      {resolutionPending ? (
+                        <p className="hint warning">
+                          Double-submit protection is active. The app checks accepted state
+                          automatically; Refresh remains available as fallback.
+                        </p>
+                      ) : null}
+
+                      {selected.resolution_attempts > 0 &&
+                      selectedPhase === 'EVIDENCE' ? (
+                        <div className="last-attempt">
+                          <span>Last attempt</span>
+                          <strong>{selected.resolution_reason || 'UNKNOWN'}</strong>
+                        </div>
+                      ) : null}
+
+                      <div className="expiry-box">
+                        {expiryWaitSeconds > 0 ? (
+                          <p className="hint">
+                            Fail-closed refund expiry: {formatDateTime(selected.expiry_at)}
+                          </p>
+                        ) : (
+                          <button
+                            className="button secondary full"
+                            disabled={!canExpire || busy !== ''}
+                            onClick={expireMarket}
+                          >
+                            {busy === 'expire'
+                              ? 'Expiring…'
+                              : 'Expire Market & Enable Refunds'}
+                          </button>
+                        )}
+                      </div>
+                    </aside>
+                  </div>
+                ) : null}
+
+                {['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(
+                  selectedPhase ?? '',
+                ) ? (
+                  <section className="result-card">
+                    <div className="result-head">
+                      <span className="section-label">FINAL OUTCOME</span>
+                      <h3>{statusLabel(selected)}</h3>
+                    </div>
+
+                    <div className="result-grid">
+                      {selected.resolution_source ? (
+                        <div className="result-row">
+                          <span>Authoritative source</span>
+                          <a
+                            href={selected.resolution_source}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {selected.resolution_source}
+                          </a>
+                        </div>
+                      ) : null}
+
+                      {selected.resolution_quote ? (
+                        <div className="result-row">
+                          <span>Quote-grounded evidence</span>
+                          <blockquote>“{selected.resolution_quote}”</blockquote>
+                        </div>
+                      ) : null}
+
+                      {selected.resolution_reason ? (
+                        <div className="result-row">
+                          <span>AI resolution reason</span>
+                          <p>{selected.resolution_reason}</p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {canClaim ? (
+                      <button
+                        className="button primary claim-button"
+                        disabled={busy !== '' || !isStudionet}
+                        onClick={claim}
+                      >
+                        {selectedPhase === 'FAILED'
+                          ? busy === 'claim'
+                            ? 'Refunding…'
+                            : 'Claim Refund'
+                          : busy === 'claim'
+                            ? 'Claiming…'
+                            : 'Claim Winnings'}
+                      </button>
+                    ) : null}
+                  </section>
+                ) : null}
+              </>
+            )}
+          </section>
+        </section>
+
+        <section id="create-market" className="create-section panel">
+          <div className="create-intro">
+            <span className="section-label">CREATE</span>
+            <h2>Launch an authority-bound market.</h2>
+            <p>
+              The authoritative domain is committed before betting and cannot be swapped
+              later to chase a preferred outcome.
+            </p>
+
+            <div className="create-stats">
+              <div><span>Network active</span><b>{activeMarkets.length}/{MAX_ACTIVE_MARKETS}</b></div>
+              <div><span>Your active</span><b>{account ? creatorActiveCount : '—'}/{MAX_ACTIVE_PER_CREATOR}</b></div>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreate} className="create-form">
             <label>
               Market ID
               <input
@@ -833,13 +1313,13 @@ function App() {
               />
             </label>
 
-            <label>
+            <label className="span-2">
               Prediction question
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Will Argentina win the 2030 FIFA World Cup?"
-                rows={4}
+                rows={3}
               />
             </label>
 
@@ -856,9 +1336,7 @@ function App() {
                   </option>
                 ))}
               </select>
-              <small>
-                Official evidence submitted after the deadline must belong to this domain or its subdomains.
-              </small>
+              <small>Evidence must belong to this domain or its subdomains.</small>
             </label>
 
             <label>
@@ -870,532 +1348,32 @@ function App() {
                 min={toDateTimeLocal(new Date(Date.now() + 60_000))}
               />
               <small>
-                Local date and time. The app converts it to the Unix timestamp required by V7.
-                Evidence opens immediately after this time; AI resolution opens 1 minute later.
+                Evidence opens after the deadline. AI resolution opens one minute later.
               </small>
             </label>
 
-            <div
-              className="limit-summary"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '8px 16px',
-                marginTop: '4px',
-                marginBottom: '12px',
-                fontSize: '0.92rem',
-              }}
-            >
-              <span>
-                Network active:{' '}
-                <strong>
-                  {activeMarkets.length} / {MAX_ACTIVE_MARKETS}
-                </strong>
-              </span>
-              <span>
-                Your active:{' '}
-                <strong>
-                  {account ? creatorActiveCount : '—'} / {MAX_ACTIVE_PER_CREATOR}
-                </strong>
-              </span>
+            <div className="create-submit">
+              <button
+                className="button primary full"
+                disabled={busy !== '' || createLimitReached || !isStudionet}
+                type="submit"
+              >
+                {busy === 'create'
+                  ? 'Creating…'
+                  : createLimitReached
+                    ? 'Active Market Limit Reached'
+                    : 'Create Market'}
+              </button>
             </div>
-
-            <button
-              className="button primary full"
-              disabled={busy !== '' || createLimitReached || !isStudionet}
-              type="submit"
-            >
-              {busy === 'create'
-                ? 'Creating…'
-                : createLimitReached
-                  ? 'Active Market Limit Reached'
-                  : 'Create Market'}
-            </button>
           </form>
-        </section>
-
-        <section className="panel markets-panel">
-          <div className="panel-heading row">
-            <div>
-              <div className="step">02</div>
-              <h2>Markets</h2>
-            </div>
-
-            <button
-              className="button ghost"
-              onClick={refreshUi}
-              disabled={busy !== ''}
-            >
-              {busy === 'refresh' ? 'Refreshing…' : 'Refresh'}
-            </button>
-          </div>
-
-          <div
-            className="market-section-title"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              marginBottom: '12px',
-            }}
-          >
-            <strong>Active Markets</strong>
-            <span>{activeMarkets.length} / {MAX_ACTIVE_MARKETS}</span>
-          </div>
-
-          <div className="market-list">
-            {activeMarkets.length === 0 ? (
-              <div className="empty">
-                <EmptyIcon />
-                <span>
-                  <b>No active markets yet</b>
-                  Create one to see it here.
-                </span>
-              </div>
-            ) : (
-              activeMarkets.map(([id, market]) => (
-                <button
-                  key={id}
-                  className={`market-card ${selectedId === id ? 'active' : ''}`}
-                  onClick={() => setSelectedId(id)}
-                >
-                  <div className="market-card-top">
-                    <span className={`status ${statusClass(market)}`}>
-                      {statusLabel(market)}
-                    </span>
-                    <span className="market-id">{id}</span>
-                  </div>
-
-                  <strong>{market.question}</strong>
-
-                  <div className="meta">
-                    <span>Authority: {market.authoritative_domain}</span>
-                    <span>Deadline: {formatDateTime(market.deadline_ts)}</span>
-                  </div>
-
-                  <div className="pools">
-                    <span>YES {market.yes_pool}</span>
-                    <span>NO {market.no_pool}</span>
-                    <PoolBar yes={market.yes_pool} no={market.no_pool} />
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-
-          <button
-            className="button ghost full history-toggle"
-            style={{ marginTop: '14px' }}
-            onClick={() => setHistoryOpen((value) => !value)}
-          >
-            {historyOpen ? 'Hide' : 'Show'} Market History ({historyMarkets.length})
-          </button>
-
-          {historyOpen ? (
-            <div className="market-list history-list">
-              {historyMarkets.slice(0, historyVisible).map(([id, market]) => (
-                <button
-                  key={id}
-                  className={`market-card history-card ${selectedId === id ? 'active' : ''}`}
-                  onClick={() => setSelectedId(id)}
-                >
-                  <div className="market-card-top">
-                    <span className={`status ${statusClass(market)}`}>
-                      {statusLabel(market)}
-                    </span>
-                    <span className="market-id">{id}</span>
-                  </div>
-
-                  <strong>{market.question}</strong>
-
-                  <div className="meta">
-                    <span>Authority: {market.authoritative_domain}</span>
-                    <span>Deadline: {formatDateTime(market.deadline_ts)}</span>
-                  </div>
-
-                  <div className="pools">
-                    <span>YES {market.yes_pool}</span>
-                    <span>NO {market.no_pool}</span>
-                  </div>
-                </button>
-              ))}
-
-              {historyVisible < historyMarkets.length ? (
-                <button
-                  className="button ghost full"
-                  onClick={() =>
-                    setHistoryVisible((value) => value + HISTORY_PAGE_SIZE)
-                  }
-                >
-                  Load More
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="panel detail-panel">
-          <div className="panel-heading">
-            <div>
-              <div className="step">03</div>
-              <h2>Trade, Evidence & Resolve</h2>
-            </div>
-          </div>
-
-          {!selected ? (
-            <div className="empty tall">
-              <EmptyIcon />
-              <span>
-                <b>No market selected</b>
-                Pick one from the list to trade, submit evidence, resolve, or claim.
-              </span>
-            </div>
-          ) : (
-            <>
-              <div className="question-box">
-                <span className={`status ${statusClass(selected)}`}>
-                  {statusLabel(selected)}
-                </span>
-
-                <h3>{selected.question}</h3>
-
-                <div className="facts">
-                  <div>
-                    <span>Authority</span>
-                    <strong>{selected.authoritative_domain}</strong>
-                  </div>
-
-                  <div>
-                    <span>Betting deadline</span>
-                    <strong>{formatDateTime(selected.deadline_ts)}</strong>
-                  </div>
-
-                  <div>
-                    <span>YES pool</span>
-                    <strong>{selected.yes_pool} G-USD</strong>
-                  </div>
-
-                  <div>
-                    <span>NO pool</span>
-                    <strong>{selected.no_pool} G-USD</strong>
-                  </div>
-
-                  <div>
-                    <span>Your YES</span>
-                    <strong>{account ? yourYes : '—'} G-USD</strong>
-                  </div>
-
-                  <div>
-                    <span>Your NO</span>
-                    <strong>{account ? yourNo : '—'} G-USD</strong>
-                  </div>
-                </div>
-              </div>
-
-              {selectedPhase === 'OPEN' ? (
-                <div className="trade-box">
-                  <label>
-                    Bet amount
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={betAmount}
-                      onChange={(e) => setBetAmount(e.target.value)}
-                    />
-                  </label>
-
-                  <div className="trade-actions">
-                    <button
-                      className="button yes"
-                      disabled={!canBet || busy !== ''}
-                      onClick={() => placeBet(true)}
-                    >
-                      {busy === 'bet' ? 'Submitting…' : 'Bet YES'}
-                    </button>
-
-                    <button
-                      className="button no"
-                      disabled={!canBet || busy !== ''}
-                      onClick={() => placeBet(false)}
-                    >
-                      {busy === 'bet' ? 'Submitting…' : 'Bet NO'}
-                    </button>
-                  </div>
-
-                  {!deadlinePassed ? (
-                    <p className="hint">
-                      Betting is open until {formatDateTime(selected.deadline_ts)}.
-                    </p>
-                  ) : (
-                    <p className="hint warning">
-                      Deadline passed. New bets are blocked by the contract.
-                    </p>
-                  )}
-
-                </div>
-              ) : null}
-
-              {selectedPhase === 'EVIDENCE' ? (
-                <div className="resolution-box">
-                  <h3>Official Evidence</h3>
-
-                  <p>
-                    Anyone may point validators at official pages on{' '}
-                    <strong>{selected.authoritative_domain}</strong>. The submitter
-                    does not choose the outcome.
-                  </p>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: '10px',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    {(selected.evidence ?? []).length === 0 ? (
-                      <div className="hint">No evidence submitted yet.</div>
-                    ) : (
-                      (selected.evidence ?? []).map((item, index) => (
-                        <div
-                          key={`${item.url}-${index}`}
-                          style={{
-                            padding: '10px 12px',
-                            border: '1px solid rgba(148, 163, 184, 0.22)',
-                            borderRadius: '10px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: '0.78rem',
-                              opacity: 0.65,
-                              marginBottom: '5px',
-                            }}
-                          >
-                            Source {index + 1} · {short(item.submitter)}
-                          </div>
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ wordBreak: 'break-word' }}
-                          >
-                            {item.url}
-                          </a>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <label>
-                    Official evidence URL
-                    <input
-                      type="url"
-                      value={evidenceUrl}
-                      onChange={(e) => setEvidenceUrl(e.target.value)}
-                      placeholder={`https://${selected.authoritative_domain}/...`}
-                      disabled={!canSubmitEvidence || busy !== ''}
-                    />
-                  </label>
-
-                  <button
-                    className="button secondary full"
-                    disabled={
-                      !canSubmitEvidence ||
-                      busy !== '' ||
-                      !evidenceUrl.trim()
-                    }
-                    onClick={submitEvidence}
-                  >
-                    {busy === 'evidence'
-                      ? 'Submitting Evidence…'
-                      : `Submit Official Evidence (${evidenceCount}/${config.max_evidence_urls})`}
-                  </button>
-
-                  {!canSubmitEvidence &&
-                  evidenceCount >= config.max_evidence_urls ? (
-                    <p className="hint warning">
-                      Evidence set is full ({config.max_evidence_urls} URLs).
-                    </p>
-                  ) : null}
-
-                  <div
-                    style={{
-                      marginTop: '18px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid rgba(148, 163, 184, 0.18)',
-                    }}
-                  >
-                    <h3>GenLayer AI Resolution</h3>
-
-                    {resolutionWaitSeconds > 0 ? (
-                      <p className="hint">
-                        Evidence collection window is open. Resolution unlocks in{' '}
-                        <strong>{formatDuration(resolutionWaitSeconds)}</strong> at{' '}
-                        {formatDateTime(selected.resolve_open_at)}.
-                      </p>
-                    ) : evidenceCount === 0 ? (
-                      <p className="hint warning">
-                        Submit at least one official evidence URL before resolving.
-                      </p>
-                    ) : !hasNewEvidenceForResolution ? (
-                      <p className="hint warning">
-                        The previous attempt returned UNKNOWN. Submit new official
-                        evidence before another resolution attempt.
-                      </p>
-                    ) : (
-                      <p className="hint">
-                        Evidence window complete. GenLayer can now adjudicate the
-                        committed official evidence.
-                      </p>
-                    )}
-
-                    <button
-                      className="button primary full"
-                      disabled={!canResolve || busy !== ''}
-                      onClick={resolveMarket}
-                    >
-                      {resolutionPending
-                        ? 'Resolution Submitted — Waiting for Consensus'
-                        : busy === 'resolve'
-                          ? 'Submitting Resolution…'
-                          : 'Resolve with GenLayer AI'}
-                    </button>
-
-                    {resolutionPending ? (
-                      <p className="hint warning">
-                        Double-submit protection is active. Do not send another
-                        resolution transaction. The app checks accepted onchain
-                        state automatically; Refresh remains available as a fallback.
-                      </p>
-                    ) : null}
-
-                    {selected.resolution_attempts > 0 &&
-                    selectedPhase === 'EVIDENCE' ? (
-                      <div style={{ marginTop: '12px' }}>
-                        <span style={{ opacity: 0.72 }}>
-                          Last attempt: {selected.resolution_reason || 'UNKNOWN'}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: '18px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid rgba(148, 163, 184, 0.18)',
-                    }}
-                  >
-                    {expiryWaitSeconds > 0 ? (
-                      <p className="hint">
-                        Fail-closed refund expiry: {formatDateTime(selected.expiry_at)}
-                      </p>
-                    ) : (
-                      <button
-                        className="button secondary full"
-                        disabled={!canExpire || busy !== ''}
-                        onClick={expireMarket}
-                      >
-                        {busy === 'expire'
-                          ? 'Expiring…'
-                          : 'Expire Market & Enable Refunds'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              {['RESOLVED_YES', 'RESOLVED_NO', 'FAILED'].includes(
-                selectedPhase ?? '',
-              ) ? (
-                <div className="result-box">
-                  <h3>{statusLabel(selected)}</h3>
-
-                  <div
-                    className="resolution-summary"
-                    style={{
-                      display: 'grid',
-                      gap: '12px',
-                      marginBottom: '14px',
-                    }}
-                  >
-                    {selected.resolution_source ? (
-                      <div className="result-row">
-                        <span>Authoritative source</span>
-                        <a
-                          href={selected.resolution_source}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ wordBreak: 'break-word' }}
-                        >
-                          {selected.resolution_source}
-                        </a>
-                      </div>
-                    ) : null}
-
-                    {selected.resolution_quote ? (
-                      <div>
-                        <span
-                          style={{
-                            display: 'block',
-                            marginBottom: '6px',
-                            opacity: 0.72,
-                            fontSize: '0.82rem',
-                          }}
-                        >
-                          Quote-grounded evidence
-                        </span>
-                        <div className="reason">
-                          “{selected.resolution_quote}”
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {selected.resolution_reason ? (
-                      <div>
-                        <span
-                          style={{
-                            display: 'block',
-                            marginBottom: '6px',
-                            opacity: 0.72,
-                            fontSize: '0.82rem',
-                          }}
-                        >
-                          AI resolution reason
-                        </span>
-                        <div className="reason">
-                          {selected.resolution_reason}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {canClaim ? (
-                    <button
-                      className="button primary full"
-                      disabled={busy !== '' || !isStudionet}
-                      onClick={claim}
-                    >
-                      {selectedPhase === 'FAILED'
-                        ? busy === 'claim'
-                          ? 'Refunding…'
-                          : 'Claim Refund'
-                        : busy === 'claim'
-                          ? 'Claiming…'
-                          : 'Claim Winnings'}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          )}
         </section>
       </main>
 
       <footer>
-        <span>GenOracle V7 • GenLayer Studionet</span>
+        <div>
+          <strong>GenOracle V7</strong>
+          <span>Official evidence · GenLayer consensus · deterministic settlement</span>
+        </div>
         <span>{CONTRACT_ADDRESS}</span>
       </footer>
     </div>

@@ -128,6 +128,36 @@ const pendingKey = (account: string, marketId: string) =>
 const RESOLUTION_AUTO_POLL_MS = 15_000
 const RESOLUTION_AUTO_POLL_MAX = 20
 
+function EmptyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z" />
+    </svg>
+  )
+}
+
+// The ratio between the two pools is the number a reader actually wants; two
+// bare integers make them do the division themselves.
+function PoolBar({ yes, no }: { yes: number | string; no: number | string }) {
+  const y = Number(yes) || 0
+  const n = Number(no) || 0
+  const total = y + n
+
+  if (total <= 0) {
+    return <div className="pool-bar empty" aria-hidden="true" />
+  }
+
+  const pct = Math.round((y / total) * 100)
+
+  return (
+    <div className="pool-bar" role="img" aria-label={`YES ${pct}%, NO ${100 - pct}%`}>
+      <i style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
 function App() {
   const [account, setAccount] = useState('')
   const [markets, setMarkets] = useState<Record<string, Market>>({})
@@ -711,8 +741,20 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">GENLAYER STUDIONET</div>
-          <h1>GenOracle</h1>
+          <div className="brand-lockup">
+            <span className="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#04101d" strokeWidth="2.1"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="8.4" />
+                <path d="M3.6 12h16.8" />
+                <path d="M12 3.6c2.2 2.4 3.3 5.3 3.3 8.4s-1.1 6-3.3 8.4c-2.2-2.4-3.3-5.3-3.3-8.4S9.8 6 12 3.6z" />
+              </svg>
+            </span>
+            <div>
+              <div className="eyebrow">GENLAYER STUDIONET</div>
+              <h1>GenOracle</h1>
+            </div>
+          </div>
           <p className="subtitle">
             Authority-bound AI prediction markets with permissionless official evidence.
           </p>
@@ -904,7 +946,13 @@ function App() {
 
           <div className="market-list">
             {activeMarkets.length === 0 ? (
-              <div className="empty">No active markets.</div>
+              <div className="empty">
+                <EmptyIcon />
+                <span>
+                  <b>No active markets yet</b>
+                  Create one to see it here.
+                </span>
+              </div>
             ) : (
               activeMarkets.map(([id, market]) => (
                 <button
@@ -929,6 +977,7 @@ function App() {
                   <div className="pools">
                     <span>YES {market.yes_pool}</span>
                     <span>NO {market.no_pool}</span>
+                    <PoolBar yes={market.yes_pool} no={market.no_pool} />
                   </div>
                 </button>
               ))
@@ -996,7 +1045,11 @@ function App() {
 
           {!selected ? (
             <div className="empty tall">
-              Select a market to trade, submit official evidence, resolve, or claim.
+              <EmptyIcon />
+              <span>
+                <b>No market selected</b>
+                Pick one from the list to trade, submit evidence, resolve, or claim.
+              </span>
             </div>
           ) : (
             <>

@@ -2,14 +2,65 @@
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #edf4ff;
-  background: #071018;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+
+  /* ---- surfaces: four steps, so panels read as layers instead of one flat sheet */
+  --bg:            #060d14;
+  --surface-1:     #0a1622;
+  --surface-2:     #0d1c2b;
+  --surface-3:     #112436;
+  --line:          #1a3145;
+  --line-soft:     #152838;
+  --line-strong:   #26496a;
+
+  /* ---- text: three weights of emphasis */
+  --text:          #e9f2fb;
+  --text-dim:      #9db2c7;
+  --text-faint:    #6b8299;
+
+  /* ---- semantics. YES and NO carry meaning, so they get their own hues */
+  --brand:         #3b8ff5;
+  --brand-soft:    rgba(59, 143, 245, 0.14);
+  --brand-line:    rgba(59, 143, 245, 0.38);
+  --yes:           #34d99b;
+  --yes-soft:      rgba(52, 217, 155, 0.15);
+  --no:            #ff7a89;
+  --no-soft:       rgba(255, 122, 137, 0.14);
+  --warn:          #f5be6b;
+  --warn-soft:     rgba(245, 190, 107, 0.15);
+
+  --radius:        14px;
+  --radius-sm:     10px;
+  --shadow:        0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -18px rgba(0, 0, 0, 0.9);
+  --ring:          0 0 0 3px rgba(59, 143, 245, 0.28);
+
+  color: var(--text);
+  background: var(--bg);
 }
 
 * {
   box-sizing: border-box;
+}
+
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel,
+  .market-card,
+  .button,
+  .contract-chip {
+    transition:
+      border-color 0.16s ease,
+      background-color 0.16s ease,
+      transform 0.16s ease,
+      box-shadow 0.16s ease;
+  }
 }
 
 body {
@@ -17,8 +68,10 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top right, rgba(32, 124, 255, 0.13), transparent 32%),
-    linear-gradient(180deg, #071018 0%, #08131e 60%, #061019 100%);
+    radial-gradient(1100px 620px at 88% -12%, rgba(59, 143, 245, 0.16), transparent 62%),
+    radial-gradient(760px 500px at 4% 8%, rgba(52, 217, 155, 0.07), transparent 60%),
+    linear-gradient(180deg, #060d14 0%, #08131e 55%, #060c13 100%);
+  background-attachment: fixed;
 }
 
 button,
@@ -488,4 +541,474 @@ footer {
 
 .gas-notice {
   border-color: #6d5730;
+}
+
+/* ==========================================================================
+   v1.1 visual polish
+   Appended so every rule above still applies and nothing existing was deleted;
+   these override by cascade order, which keeps the diff readable.
+   ========================================================================== */
+
+/* --- brand lockup -------------------------------------------------------- */
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(150deg, var(--brand) 0%, #1a5fb8 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09) inset,
+    0 8px 22px -10px rgba(59, 143, 245, 0.8);
+}
+
+.brand-mark svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+h1 {
+  font-size: clamp(34px, 4vw, 46px);
+  letter-spacing: -0.028em;
+  line-height: 1.02;
+  margin: 2px 0 0;
+  background: linear-gradient(94deg, #ffffff 12%, #a8cdf7 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.eyebrow,
+.step {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 15.5px;
+  max-width: 62ch;
+}
+
+/* --- policy banner: a rule, not a paragraph ------------------------------ */
+
+.steward-banner,
+.notice {
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(59, 143, 245, 0.07), rgba(59, 143, 245, 0.02));
+  position: relative;
+  padding-left: 20px;
+  line-height: 1.62;
+  color: var(--text-dim);
+}
+
+.steward-banner::before,
+.notice::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand);
+}
+
+.steward-banner strong,
+.notice strong {
+  color: var(--text);
+}
+
+/* --- panels -------------------------------------------------------------- */
+
+.grid {
+  align-items: start;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel:hover {
+  border-color: var(--line-strong);
+}
+
+.panel-heading {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.panel-heading h2 {
+  letter-spacing: -0.015em;
+}
+
+/* Column 1 is a long form; columns 2 and 3 are short until a market exists, so
+   the row used to bottom out two thirds of the way across and read as one tall
+   column beside two stubs. A floor on the two right-hand panels keeps the row
+   balanced whether or not there is data yet, and the empty states centre inside
+   that floor instead of hugging the top. */
+@media (min-width: 1101px) {
+  .markets-panel,
+  .detail-panel {
+    min-height: 620px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .markets-panel .market-list,
+  .detail-panel > .empty.tall {
+    flex: 1;
+  }
+
+  .detail-panel > .empty.tall {
+    align-content: center;
+  }
+
+  .markets-panel .market-list {
+    align-content: start;
+  }
+
+  .markets-panel .market-list .empty {
+    margin: auto 0;
+  }
+}
+
+/* --- form controls ------------------------------------------------------- */
+
+input,
+textarea,
+select {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 11px 13px;
+  width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-faint);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--brand-line);
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* the native select rendered white-on-black in a dark UI - the single most
+   visible break in the whole page */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position:
+    calc(100% - 19px) calc(50% + 1px),
+    calc(100% - 14px) calc(50% + 1px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+select option {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+label {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+small,
+.hint {
+  color: var(--text-faint);
+  line-height: 1.55;
+}
+
+.hint.warning {
+  color: var(--warn);
+}
+
+/* --- buttons ------------------------------------------------------------- */
+
+.button {
+  border-radius: var(--radius-sm);
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.button.primary {
+  background: linear-gradient(180deg, #4b9bff 0%, var(--brand) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #04101d;
+  box-shadow: 0 8px 20px -12px rgba(59, 143, 245, 0.95);
+}
+
+.button.primary:not(:disabled):hover {
+  box-shadow: 0 12px 26px -12px rgba(59, 143, 245, 1);
+}
+
+.button.ghost {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+}
+
+.button.ghost:not(:disabled):hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.button.yes {
+  background: var(--yes-soft);
+  border: 1px solid rgba(52, 217, 155, 0.42);
+  color: var(--yes);
+}
+
+.button.no {
+  background: var(--no-soft);
+  border: 1px solid rgba(255, 122, 137, 0.4);
+  color: var(--no);
+}
+
+/* --- market cards -------------------------------------------------------- */
+
+.market-card {
+  border: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.market-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+.market-card.active {
+  border-color: var(--brand-line);
+  background: var(--surface-3);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.market-card strong {
+  font-size: 15px;
+  letter-spacing: -0.011em;
+  color: var(--text);
+}
+
+.market-id {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.meta {
+  color: var(--text-faint);
+}
+
+/* pool split as a bar, not two numbers - the ratio is the point */
+.pools {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.pools span:first-child {
+  color: var(--yes);
+}
+
+.pools span:last-child {
+  color: var(--no);
+  text-align: right;
+}
+
+.pool-bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--no-soft);
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+}
+
+.pool-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--yes);
+  border-radius: 999px;
+}
+
+.pool-bar.empty {
+  background: var(--line-soft);
+  padding: 0;
+  border: none;
+}
+
+/* --- status pills -------------------------------------------------------- */
+
+.status {
+  background: var(--brand-soft);
+  color: #9dc9fb;
+  border: 1px solid var(--brand-line);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.status.resolved_yes {
+  background: var(--yes-soft);
+  color: var(--yes);
+  border-color: rgba(52, 217, 155, 0.4);
+}
+
+.status.resolved_no,
+.status.failed {
+  background: var(--no-soft);
+  color: var(--no);
+  border-color: rgba(255, 122, 137, 0.38);
+}
+
+.status.closed_for_betting {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: rgba(245, 190, 107, 0.36);
+}
+
+/* --- empty states -------------------------------------------------------- */
+
+.empty {
+  color: var(--text-faint);
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: 34px 20px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.empty svg {
+  width: 34px;
+  height: 34px;
+  opacity: 0.42;
+}
+
+.empty b {
+  color: var(--text-dim);
+  font-weight: 650;
+  display: block;
+}
+
+/* --- chips, wallet, footer ----------------------------------------------- */
+
+.contract-chip,
+.wallet-address,
+.balance,
+.network-chip,
+.native-balance {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
+.contract-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.network-chip.ok {
+  background: var(--yes-soft);
+  border-color: rgba(52, 217, 155, 0.36);
+  color: var(--yes);
+}
+
+.network-chip.wrong {
+  background: var(--no-soft);
+  border-color: rgba(255, 122, 137, 0.36);
+  color: var(--no);
+}
+
+.question-box h3 {
+  letter-spacing: -0.02em;
+}
+
+.facts span,
+.result-row span {
+  font-variant-numeric: tabular-nums;
+}
+
+footer {
+  border-top: 1px solid var(--line-soft);
+  color: var(--text-faint);
+  font-size: 12.5px;
+  padding-top: 18px;
+  margin-top: 34px;
+}
+
+footer code,
+footer .addr {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+/* --- responsive ---------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .app-shell {
+    width: min(1480px, calc(100% - 22px));
+    padding-top: 20px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .market-list {
+    max-height: none;
+  }
 }

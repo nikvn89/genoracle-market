@@ -4,6 +4,58 @@ All notable changes to GenOracle. Format follows [Keep a Changelog](https://keep
 
 ---
 
+## [1.2.0] — 2026-08-29 — Visual Design Polish
+
+Milestone 2. Answers the Project Explorer reviewer's recommendation:
+
+> *"Giving the landing page UI a visual design polish will make it look even more
+> state-of-the-art for community discovery."*
+
+**No contract change, no redeploy, and no change to logic or data flow** — this
+is CSS plus three small presentational components.
+
+### Fixed
+
+- **The authority `<select>` rendered as a native white-on-black control** in the
+  middle of a dark interface — the single most visible break on the page. Now
+  fully themed with a custom caret. `color-scheme: dark` on the datetime input
+  so its picker matches too.
+
+### Changed
+
+- **Design tokens replace scattered hex values.** Four surface steps so panels
+  read as layers rather than one flat sheet, three levels of text emphasis, and
+  semantic YES / NO hues. Status pills inherit those semantics instead of all
+  sharing one blue.
+
+- **Three-column balance.** Column 1 is a long form while columns 2 and 3 are
+  short until a market exists, so the row bottomed out two thirds of the way
+  across and read as one tall column beside two stubs. A `min-height` floor on
+  the right-hand panels holds the row square and centres the empty states inside
+  it.
+
+- **Empty states** now carry an icon, a headline and a next action instead of one
+  flat sentence. Copy is direction-neutral so it stays true when the columns
+  stack on mobile.
+
+### Added
+
+- **Brand lockup.** The app showed a bare wordmark and no mark at all.
+
+- **Pool split as a bar.** `YES 3 / NO 1` should not make a reader do the
+  division. The bar carries `role="img"` with an `aria-label` giving both
+  percentages, so it is not decoration.
+
+- **Focus rings** via `:focus-visible` on every control; hover lift on buttons
+  and cards. All motion sits inside `@media (prefers-reduced-motion: no-preference)`.
+
+### Verified
+
+Playwright screenshots before and after at **1440×1000** and **390×844**.
+`npm run build` rc 0.
+
+---
+
 ## [1.1.0] — 2026-08-29 — Build Reliability & Repo Hygiene
 
 Milestone 1. GenOracle could not be installed from a clean clone. Nothing was

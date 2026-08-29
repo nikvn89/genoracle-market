@@ -6,6 +6,20 @@ GenOracle is a full-stack GenLayer dApp where users create YES/NO prediction mar
 
 The contract then settles the market deterministically and allows winning bettors to claim their share of the pool.
 
+
+## Build
+
+```bash
+npm install       # clean clone, no browser download
+npm run build     # tsc -b && vite build
+```
+
+Requires Node 18+. `contracts/market.py` is the deployed Intelligent Contract at
+`0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7` on GenLayer StudioNet; it is the
+only file in `contracts/`. Deploy and probe tooling lives in `scripts/`.
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in 1.1.0.
+
 ## Why GenLayer
 
 Prediction-market resolution often depends on interpreting unstructured official information.

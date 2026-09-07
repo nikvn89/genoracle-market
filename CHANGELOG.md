@@ -4,18 +4,46 @@ All notable changes to GenOracle. Format follows [Keep a Changelog](https://keep
 
 ---
 
-## [1.3.0] — 2026-09-07 — Contract Test Suite & Security Disclosure
+## [1.3.0] — 2026-09-07 — Test Coverage, a Frontend Data-Loss Fix & Security Disclosure
 
 Milestone 3. The first two milestones fixed how GenOracle *builds* and how it
 *looks*. This one is about whether its contract can be checked.
 
 **No contract change and no redeploy.** `contracts/market.py` is byte-identical
 to the deployed version at `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`. Three
-weaknesses were found and are documented rather than patched, because patching
-them means redeploying and losing address continuity — they are queued for the
-next milestone.
+contract weaknesses were found and are documented rather than patched, because
+patching them means redeploying and losing address continuity — they are queued
+for the next milestone. The one defect fixed here lives in the frontend, where
+a fix ships without touching the chain.
 
 ### Fixed
+
+- **The frontend silently discarded any payload containing a double quote.**
+  `parseJson` in `src/lib/genlayer.ts` ran `.replace(/\\"/g, '"')` before
+  `JSON.parse`, un-escaping the very escaping that makes a quote legal inside a
+  JSON string. The payload became invalid JSON, `JSON.parse` threw, and the
+  `catch` handed back an empty fallback without a word.
+
+  `get_all_markets` returns every market in **one** string, so a single market
+  whose question or `resolution_quote` contained `"` emptied the entire Explore
+  panel for every visitor. `get_state` degraded the same way, showing a balance
+  of 0. And `resolution_quote` is a verbatim quote lifted from an official news
+  page by the model — a double quote in it is ordinary.
+
+  ```text
+  single-encoded, quotes inside    before: payload lost    after: ok
+  double-encoded, quotes inside    before: payload lost    after: ok
+  single-encoded, no quotes        before: ok              after: ok
+  ```
+
+  The parser now decodes the JSON layers instead of rewriting the text, which
+  handles both the single- and double-encoded shapes the SDK returns and leaves
+  the content untouched. Extracted to `src/lib/json.ts` so it can be tested;
+  `src/lib/json.test.ts` covers 12 cases, 5 of which fail against the old
+  implementation.
+
+  No market on StudioNet had tripped it at the time of the fix — the app was
+  rendering normally. It was found by reading, not by an outage.
 
 - **`tests/test_invariants.py` could not run at all.** The repository shipped a
   test file that looked like coverage and was not:
@@ -81,6 +109,10 @@ next milestone.
     state. This has never been observed to break a transaction on StudioNet and
     is not claimed to have; what the test demonstrates is the precondition.
 
+- **A frontend test runner.** The repository had none: `src/` is 2,100 lines
+  and nothing had ever been asserted about it. Vitest is wired up as
+  `npm test`, currently covering the payload decoder above. CI runs it.
+
 - **`.github/workflows/ci.yml`** — nothing was checking this repository. An
   earlier keeper-bot workflow had been removed and only its run history survives
   in the Actions tab, so despite that history no workflow file was present. Now
@@ -97,6 +129,7 @@ next milestone.
 ```text
 npm ci                                    rc 0
 npm run build                             rc 0
+npm test                                  rc 0   12 tests
 python3 -m unittest discover -s tests     rc 0   71 tests
 python3 tests/mutation_check.py           rc 0   22/22 killed
 

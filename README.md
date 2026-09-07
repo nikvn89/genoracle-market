@@ -21,11 +21,12 @@ only file in `contracts/`. Deploy and probe tooling lives in `scripts/`.
 ## Tests
 
 ```bash
+npm test                                     # 12 frontend tests
 python3 -m unittest discover -s tests -v     # 71 tests over the deployed contract
 python3 tests/mutation_check.py              # 22 mutants, 22 killed
 ```
 
-No packages, no GenVM, no network, no wallet. The suite imports
+The Python suite needs no packages, no GenVM, no network and no wallet. It imports
 `contracts/market.py` verbatim, so it always tests the file in this repository.
 Validator consensus is not simulated — see [tests/README.md](tests/README.md)
 for exactly where the line is drawn, and [SECURITY.md](SECURITY.md) for the

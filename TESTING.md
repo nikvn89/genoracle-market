@@ -14,6 +14,28 @@ Frontend:
 
 https://genoracle-market.vercel.app
 
+## Two kinds of evidence in this file
+
+This document records what was observed **on-chain**, with real validator
+consensus: the sections below are transaction-level results from StudioNet and
+they are the only evidence for anything involving the AI layer.
+
+The **deterministic** half of the contract — settlement arithmetic, the
+authority boundary, evidence caps, the state machine, sender binding — is
+covered separately and reproducibly by the test suite:
+
+```bash
+python3 -m unittest discover -s tests -v     # 71 tests, ~12s
+python3 tests/mutation_check.py              # 22 mutants, 22 killed, ~4 min
+```
+
+That suite imports `contracts/market.py` verbatim and never simulates consensus;
+`gl.nondet.web.render` and `gl.nondet.exec_prompt` raise if reached. See
+[tests/README.md](tests/README.md). Three known weaknesses it pins down are in
+[SECURITY.md](SECURITY.md).
+
+---
+
 ## Final End-to-End Test — PASS
 
 ### Market

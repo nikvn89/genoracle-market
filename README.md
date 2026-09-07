@@ -18,7 +18,20 @@ Requires Node 18+. `contracts/market.py` is the deployed Intelligent Contract at
 `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7` on GenLayer StudioNet; it is the
 only file in `contracts/`. Deploy and probe tooling lives in `scripts/`.
 
-See [CHANGELOG.md](CHANGELOG.md) for what changed in 1.1.0.
+## Tests
+
+```bash
+python3 -m unittest discover -s tests -v     # 71 tests over the deployed contract
+python3 tests/mutation_check.py              # 22 mutants, 22 killed
+```
+
+No packages, no GenVM, no network, no wallet. The suite imports
+`contracts/market.py` verbatim, so it always tests the file in this repository.
+Validator consensus is not simulated — see [tests/README.md](tests/README.md)
+for exactly where the line is drawn, and [SECURITY.md](SECURITY.md) for the
+trust boundaries and the three open weaknesses the suite pins down.
+
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ## Why GenLayer
 
@@ -70,7 +83,9 @@ After the deadline:
 - evidence submissions are permissionless,
 - each address may submit at most 2 URLs,
 - each market accepts at most 3 evidence URLs,
-- duplicate URLs are rejected,
+- duplicate URLs are rejected — but only after normalization that keeps the
+  query string and the `www.` prefix, so two spellings of one page still count
+  as two (**GO-1**, see [SECURITY.md](SECURITY.md)),
 - off-domain URLs are rejected.
 
 GenLayer validators independently fetch the committed evidence and discard irrelevant pages.
@@ -265,11 +280,34 @@ This is a StudioNet deployment, so a Project Explorer listing should be treated 
 - irrelevant evidence should be discarded rather than treated as an UNKNOWN vote,
 - YES/NO verdicts require quote-grounded evidence,
 - UNKNOWN does not immediately trigger refunds,
-- repeat resolution requires new evidence,
-- claims zero the user's settled position.
+- claims zero the user's settled position,
+- a market never pays out more than it took in, and a failed market refunds
+  exactly what it took in.
+
+Each of these is covered by a named test in [`tests/`](tests/README.md), and the
+mutation matrix confirms the tests fail when the property is broken.
+
+One earlier claim has been withdrawn. This section previously read *"repeat
+resolution requires new evidence"*. The contract counts evidence URLs rather
+than distinct pages, so a cosmetic variant of a page validators have already
+read — a different query string, or the `www.` form — satisfies that counter.
+The gate is weaker than the sentence promised. It is tracked as **GO-2** in
+[SECURITY.md](SECURITY.md) with a test that drives the bypass end to end, and it
+is queued for the next contract release.
 
 ## Limitations
 
 GenOracle relies on the availability and integrity of the authoritative websites selected by market creators. Official pages can change, disappear, become unavailable, or render differently over time.
 
-V7 intentionally does not add token incentives, evidence bonds, reputation systems or a dispute court. The goal is a simple public GenLayer demonstration of permissionless evidence submission, decentralized AI adjudication and deterministic settlement.
+Three weaknesses are known, open and documented rather than hidden: the
+anti-grinding gate can be stepped past with a cosmetic URL variant (**GO-2**),
+`www.` and non-`www.` spellings of one page occupy two evidence slots
+(**GO-1**), and the contract's clock is host wall-clock rather than the
+timestamp committed with the transaction (**GO-3**). Each has a test that
+asserts the current behaviour. [SECURITY.md](SECURITY.md) has the detail and the
+fix direction; all three require a contract redeploy.
+
+V7 intentionally does not add token incentives, evidence bonds, reputation
+systems or a dispute court. The goal is a simple public GenLayer demonstration
+of permissionless evidence submission, decentralized AI adjudication and
+deterministic settlement.

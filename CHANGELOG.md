@@ -4,6 +4,100 @@ All notable changes to GenOracle. Format follows [Keep a Changelog](https://keep
 
 ---
 
+## [1.3.0] — 2026-09-07 — Contract Test Suite & Security Disclosure
+
+Milestone 3. The first two milestones fixed how GenOracle *builds* and how it
+*looks*. This one is about whether its contract can be checked.
+
+**No contract change and no redeploy.** `contracts/market.py` is byte-identical
+to the deployed version at `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`. Three
+weaknesses were found and are documented rather than patched, because patching
+them means redeploying and losing address continuity — they are queued for the
+next milestone.
+
+### Fixed
+
+- **`tests/test_invariants.py` could not run at all.** The repository shipped a
+  test file that looked like coverage and was not:
+
+  ```text
+  $ python3 tests/test_invariants.py
+  NameError: name 'gl' is not defined
+  ```
+
+  It failed at import. Its mock replaced `sys.modules['genlayer']` with an
+  *instance*, so `from genlayer import *` in the contract never bound `gl`. Its
+  assertions had also drifted from the contract they claimed to test — it called
+  `create_market(..., "https://news.com/btc", "2026-12-31")` against a signature
+  that takes a bare domain and an integer deadline, and `news.com` is not on the
+  authority whitelist. It was removed, not repaired.
+
+- **`package-lock.json` was pinned at version `0.0.0`** while `package.json` had
+  moved to `1.2.0`.
+
+### Added
+
+- **71 deterministic tests over the deployed contract**, in `tests/`. They
+  import `contracts/market.py` verbatim, so they cannot drift from the source
+  they cover. `tests/genvm_stub.py` supplies only the deterministic GenVM
+  surface; `gl.nondet.web.render` and `gl.nondet.exec_prompt` raise if reached,
+  and where a verdict is needed it is injected rather than fabricated. Consensus
+  is not simulated and the suite does not pretend otherwise.
+
+  Coverage: pari-mutuel settlement and refunds, double-claim, integer remainder,
+  the authority boundary (prefix and suffix lookalikes, userinfo spoofs, ports,
+  plain http), duplicate suppression, both evidence caps, the full
+  create → bet → evidence → resolve → expire → claim state machine, sender
+  binding on every value-moving method, and the public API and calldata types.
+
+  Plus a **500-market randomized sweep** asserting, after every market, that no
+  market pays out more than it took in and that
+  `sum(balances) == minted − staked + paid` exactly.
+
+- **A mutation matrix, `tests/mutation_check.py` — 22 of 22 mutants killed.**
+  A green suite proves nothing until it is shown to go red. Each mutant is one
+  edit that breaks a property the suite claims to defend. Four survived the
+  first run and are named in `tests/README.md`: two guards were being upheld by
+  an unrelated string offset rather than by the check itself, and two paths had
+  no dedicated test at all. Tests were added until all 22 failed the suite.
+
+- **`SECURITY.md`** — trust boundaries, what the contract enforces, and three
+  open weaknesses, each pinned by a characterization test that asserts today's
+  behaviour:
+
+  - **GO-2, the one that matters.** `resolve_market` gates re-adjudication on
+    `len(evidence) > last_attempt_evidence_count` — the README calls this
+    "repeat resolution requires new evidence". The counter is satisfied by any
+    URL with a new normalized form, and `_normalize_url` keeps the query string.
+    So `…/report?v=2` counts as new evidence for a page validators have already
+    read, and one real page yields the full three-attempt budget: three
+    independent runs of a non-deterministic adjudication over identical content.
+    The test drives it end to end — UNKNOWN, gate holds, cosmetic variant,
+    RESOLVED_YES.
+  - **GO-1.** `_url_matches_domain` treats `www.nasa.gov` and `nasa.gov` as one
+    host; `_normalize_url` does not. One page, two evidence slots.
+  - **GO-3.** `_now()` reads `datetime.now(timezone.utc)` — host wall-clock,
+    produced independently by whichever node executes the call, and written into
+    state. This has never been observed to break a transaction on StudioNet and
+    is not claimed to have; what the test demonstrates is the precondition.
+
+- **`.github/workflows/ci.yml`** — the repository had no CI. Now `npm ci`,
+  `npm run build`, the suite and the mutation matrix run on every push.
+
+- **`tests/README.md`** — how to run everything, and an honest account of what
+  the suite does not cover.
+
+### Verified
+
+```text
+npm ci                                    rc 0
+npm run build                             rc 0
+python3 -m unittest discover -s tests     rc 0   71 tests
+python3 tests/mutation_check.py           rc 0   22/22 killed
+```
+
+---
+
 ## [1.2.0] — 2026-08-29 — Visual Design Polish
 
 Milestone 2. Answers the Project Explorer reviewer's recommendation:

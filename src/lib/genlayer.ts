@@ -2,6 +2,7 @@ import { createClient } from 'genlayer-js'
 import { studionet } from 'genlayer-js/chains'
 import { TransactionStatus } from 'genlayer-js/types'
 import { getAddress } from 'viem'
+import { parseJson } from './json'
 import {
   CONTRACT_ADDRESS,
   EXPLORER_BASE,
@@ -334,19 +335,6 @@ async function read(functionName: string, args: Array<string | number> = []) {
     args,
     stateStatus: 'accepted',
   } as any)
-}
-
-function parseJson<T>(value: unknown, fallback: T): T {
-  try {
-    if (typeof value === 'string') {
-      const cleaned = value.replace(/^"|"$/g, '').replace(/\\"/g, '"')
-      return JSON.parse(cleaned) as T
-    }
-
-    return value as T
-  } catch {
-    return fallback
-  }
 }
 
 export const genOracle = {

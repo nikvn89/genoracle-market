@@ -81,8 +81,13 @@ next milestone.
     state. This has never been observed to break a transaction on StudioNet and
     is not claimed to have; what the test demonstrates is the precondition.
 
-- **`.github/workflows/ci.yml`** — the repository had no CI. Now `npm ci`,
-  `npm run build`, the suite and the mutation matrix run on every push.
+- **`.github/workflows/ci.yml`** — nothing was checking this repository. An
+  earlier keeper-bot workflow had been removed and only its run history survives
+  in the Actions tab, so despite that history no workflow file was present. Now
+  `npm ci`, `npm run build`, the deterministic suite and the mutation matrix all
+  run on every push.
+
+  First run, both jobs green: frontend 23s, contract tests 2m 23s.
 
 - **`tests/README.md`** — how to run everything, and an honest account of what
   the suite does not cover.
@@ -94,6 +99,8 @@ npm ci                                    rc 0
 npm run build                             rc 0
 python3 -m unittest discover -s tests     rc 0   71 tests
 python3 tests/mutation_check.py           rc 0   22/22 killed
+
+GitHub Actions, first run                 both jobs green
 ```
 
 ---

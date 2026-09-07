@@ -1,5 +1,8 @@
 # Deterministic contract tests
 
+> Frontend tests live beside the code they cover, in `src/`, and run with
+> `npm test`. This directory is the contract.
+
 71 tests over `contracts/market.py`, plus a mutation matrix that checks the
 tests actually fail when the contract is wrong.
 

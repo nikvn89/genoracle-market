@@ -3,7 +3,7 @@
 Mutation check -- does the suite actually have teeth?
 
 A test suite that passes proves nothing on its own; it has to be shown to fail
-when the contract is wrong. This script makes 22 small, targeted edits to
+when the contract is wrong. This script makes 32 small, targeted edits to
 `contracts/market.py` -- each one a plausible mistake that breaks a property the
 suite claims to protect -- and runs the whole suite against each mutant.
 
@@ -14,6 +14,10 @@ Nothing under `contracts/` is modified: each mutant is written to a temporary
 directory and the suite is pointed at it through GENORACLE_CONTRACT.
 
     python3 tests/mutation_check.py
+
+Each mutant runs the deterministic suite first; if that stays green and
+genlayer-test is installed, the GenVM Direct Mode suite (tests/direct) runs
+too. A mutant is KILLED when either suite fails.
 """
 
 import os
@@ -94,7 +98,44 @@ MUTANTS = [
     ("M22", "a failed market refunds only the YES side",
      "            payout = user_yes + user_no\n            market[\"yes_positions\"][user_key] = 0\n            market[\"no_positions\"][user_key] = 0\n\n        else:\n            raise gl.vm.UserError(\"Unknown market status\")",
      "            payout = user_yes\n            market[\"yes_positions\"][user_key] = 0\n            market[\"no_positions\"][user_key] = 0\n\n        else:\n            raise gl.vm.UserError(\"Unknown market status\")"),
+    ("M23", "GO-1 reopened: www. is kept in the evidence identity",
+     '        if value.startswith("www."):\n            value = value[4:]\n        while value.endswith("/"):',
+     '        while value.endswith("/"):'),
+    ("M24", "GO-2 reopened: the query string is kept in the evidence identity",
+     '        value = value.split("#")[0].split("?")[0]',
+     '        value = value.split("#")[0]'),
+    ("M25", "the adjudication budget is removed",
+     '        if int(market.get("resolution_attempts", 0)) >= MAX_RESOLUTION_ATTEMPTS:',
+     '        if False:'),
+    ("M26", "the attempt ledger does not record when an attempt happened",
+     '            "at": now,', '            "at": 0,'),
+    ("M27", "a question may carry a prompt-fence marker",
+     '        if self._has_fence_token(clean_question):', '        if False:'),
+    ("M28", "the fence strips nothing from rendered pages",
+     '            for token in FENCE_TOKENS:\n                index = cleaned.upper().find(token)',
+     '            for token in ():\n                index = cleaned.upper().find(token)'),
+    ("M29", "GO-3 regression: the clock drops minutes and seconds",
+     '                     + hour * 3600 + minute * 60 + second)', '                     + hour * 3600)'),
+    ("M30", "the clock applies a UTC offset in the wrong direction",
+     '            return unix_time - shift if offset[0] == "+" else unix_time + shift',
+     '            return unix_time + shift if offset[0] == "+" else unix_time - shift'),
+    ("M31", "a fenced JSON answer from the model is not unwrapped",
+     '                    if text.startswith("```"):', '                    if False:'),
+    ("M32", "the validator accepts a quote it cannot find in its own render",
+     '                    if not quote_found:\n                        return False',
+     '                    if False:\n                        return False'),
 ]
+
+
+def _has_gltest():
+    try:
+        import gltest  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+HAS_GLTEST = _has_gltest()
 
 
 def run_suite(contract_path):
@@ -103,7 +144,13 @@ def run_suite(contract_path):
         [sys.executable, "-m", "unittest", "discover", "-s", TESTS],
         cwd=ROOT, env=env, capture_output=True, text=True,
     )
-    return proc.returncode, proc.stdout + proc.stderr
+    if proc.returncode != 0 or not HAS_GLTEST:
+        return proc.returncode, proc.stdout + proc.stderr
+    direct = subprocess.run(
+        [sys.executable, "-m", "pytest", os.path.join(TESTS, "direct"), "-q", "-x", "-p", "no:cacheprovider"],
+        cwd=ROOT, env=env, capture_output=True, text=True,
+    )
+    return direct.returncode, direct.stdout + direct.stderr
 
 
 def main():

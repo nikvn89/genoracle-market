@@ -1,3 +1,5 @@
+// Contract V8. Set VITE_CONTRACT_ADDRESS in Vercel to the V8 deployment; the
+// fallback below is updated to the V8 address in the same release.
 export const CONTRACT_ADDRESS =
   (import.meta.env.VITE_CONTRACT_ADDRESS as `0x${string}` | undefined) ??
   '0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7'

@@ -254,3 +254,9 @@ footer strong { color: #a8bac2; font-size: 10px; }
   .create-form .span-2 { grid-column: auto; }
   footer { align-items: flex-start; flex-direction: column; padding: 16px; }
 }
+
+.attempt-log { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.attempt-log li { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; }
+.attempt-log li span { color: #657f89; font-size: 11px; }
+.attempt-log li strong { font-size: 12px; }
+.attempt-log li small { color: #657f89; font-size: 11px; overflow-wrap: anywhere; }

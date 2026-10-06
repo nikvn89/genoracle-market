@@ -3,7 +3,8 @@ Minimal deterministic stand-in for the GenVM `genlayer` runtime.
 
 Scope, stated plainly: this module reproduces ONLY the deterministic surface a
 GenLayer Intelligent Contract touches -- the contract base class, the
-public-method decorators, `gl.message`, and `gl.vm.UserError`. It does NOT
+public-method decorators, `gl.message`, `gl.message_raw` (the transaction
+envelope, whose `datetime` is the contract clock) and `gl.vm.UserError`. It does NOT
 simulate validator consensus, `gl.nondet.web.render` or `gl.nondet.exec_prompt`.
 Anything that depends on the non-deterministic layer is exercised by injecting a
 consensus result, never by pretending to reach one (see `set_nondet_result`).
@@ -82,6 +83,9 @@ class _GL:
 
     def __init__(self):
         self.message = _Message()
+        # The transaction envelope. V8 reads its clock from message_raw["datetime"],
+        # the timestamp committed with the transaction; the harness steers it.
+        self.message_raw = {"datetime": "2027-01-15T08:00:00Z"}
         self.vm = _VM()
         self.nondet = _Nondet()
 

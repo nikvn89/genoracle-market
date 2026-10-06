@@ -42,6 +42,14 @@ export type EvidenceItem = {
   submitted_at: number
 }
 
+export type AttemptRecord = {
+  attempt: number
+  decision: 'YES' | 'NO' | 'UNKNOWN'
+  reason: string
+  evidence_count: number
+  at: number
+}
+
 export type MarketStatus =
   | 'OPEN'
   | 'EVIDENCE'
@@ -67,6 +75,7 @@ export type Market = {
   evidence_counts?: Record<string, number>
   last_attempt_evidence_count: number
   resolution_attempts: number
+  attempt_log?: AttemptRecord[]
   resolution_reason?: string
   resolution_source?: string
   resolution_quote?: string
@@ -82,6 +91,8 @@ export type ContractConfig = {
   expiry_period_seconds: number
   max_evidence_urls: number
   max_evidence_per_address: number
+  max_resolution_attempts?: number
+  contract_version?: string
 }
 
 export const normalizeAddress = (address: string) => getAddress(address)

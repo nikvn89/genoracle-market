@@ -1,11 +1,12 @@
 """
-Loads the deployed contract source and gives a test full control over the two
-inputs a GenLayer contract reads from its environment: the clock and the sender.
+Loads the contract source and gives a test full control over the two inputs a
+GenLayer contract reads from its environment: the transaction clock and the sender.
 
 `contracts/market.py` is imported verbatim. If the contract changes, these tests
 change with it or they break -- which is the point.
 """
 
+import datetime as _dt
 import importlib.util
 import json
 import os
@@ -48,20 +49,9 @@ DAVE = _addr("dave")
 MALLORY = _addr("mallory")
 
 
-class _FrozenDateTime:
-    """Replaces `datetime` inside the contract module so `_now()` is steerable."""
-
-    current = 1_800_000_000
-
-    def __init__(self, ts):
-        self._ts = ts
-
-    @classmethod
-    def now(cls, _tz=None):
-        return cls(cls.current)
-
-    def timestamp(self):
-        return self._ts
+def iso_utc(ts: int) -> str:
+    """The transaction datetime string GenLayer commits, for a unix timestamp."""
+    return _dt.datetime.fromtimestamp(int(ts), _dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
 def load_contract_module():
@@ -70,7 +60,6 @@ def load_contract_module():
     module = importlib.util.module_from_spec(spec)
     sys.modules["market"] = module
     spec.loader.exec_module(module)
-    module.datetime = _FrozenDateTime
     return module
 
 
@@ -87,14 +76,16 @@ class Harness:
 
     # -- environment ------------------------------------------------------
     def set_time(self, ts: int):
-        _FrozenDateTime.current = int(ts)
-        return int(ts)
+        """Set the transaction timestamp every following call executes under."""
+        self._now = int(ts)
+        self.gl.message_raw["datetime"] = iso_utc(self._now)
+        return self._now
 
     def advance(self, seconds: int):
-        return self.set_time(_FrozenDateTime.current + int(seconds))
+        return self.set_time(self._now + int(seconds))
 
     def now(self) -> int:
-        return _FrozenDateTime.current
+        return self._now
 
     def set_sender(self, address: str):
         self.gl.message.sender_address = address

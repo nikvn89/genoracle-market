@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CONTRACT_ADDRESS } from './lib/config'
+import { attemptsLeft, canonicalEvidenceUrl, duplicateOf } from './lib/evidence'
 import {
   connectWallet,
   ContractConfig,
@@ -34,6 +35,7 @@ const DEFAULT_CONFIG: ContractConfig = {
   expiry_period_seconds: 30 * 24 * 60 * 60,
   max_evidence_urls: 3,
   max_evidence_per_address: 2,
+  max_resolution_attempts: 3,
 }
 
 const short = (value: string, start = 8, end = 6) =>
@@ -106,7 +108,7 @@ const MAX_ACTIVE_MARKETS = 50
 const MAX_ACTIVE_PER_CREATOR = 5
 const HISTORY_PAGE_SIZE = 10
 
-// Must match the V7 contract whitelist exactly.
+// Must match the V8 contract whitelist exactly.
 const AUTHORITY_OPTIONS = [
   'fifa.com',
   'uefa.com',
@@ -123,7 +125,7 @@ const AUTHORITY_OPTIONS = [
 ]
 
 const pendingKey = (account: string, marketId: string) =>
-  `genoracle:v7:resolve:${CONTRACT_ADDRESS}:${account.toLowerCase()}:${marketId}`
+  `genoracle:v8:resolve:${CONTRACT_ADDRESS}:${account.toLowerCase()}:${marketId}`
 
 const RESOLUTION_AUTO_POLL_MS = 15_000
 const RESOLUTION_AUTO_POLL_MAX = 20
@@ -687,6 +689,11 @@ function App() {
   const resolutionPending =
     !!selectedId && !!pendingResolutions[selectedId]
 
+  const maxAttempts = config.max_resolution_attempts ?? 3
+  const remainingAttempts = selected ? attemptsLeft(selected, maxAttempts) : maxAttempts
+  const evidencePreview = evidenceUrl.trim() ? canonicalEvidenceUrl(evidenceUrl) : ''
+  const evidenceDuplicate = selected && evidenceUrl.trim() ? duplicateOf(evidenceUrl, selected) : null
+
   const hasNewEvidenceForResolution =
     !!selected &&
     evidenceCount > (selected.last_attempt_evidence_count ?? 0)
@@ -699,6 +706,7 @@ function App() {
     nowTs < selected.expiry_at &&
     evidenceCount > 0 &&
     hasNewEvidenceForResolution &&
+    remainingAttempts > 0 &&
     !resolutionPending
 
   const canExpire =
@@ -1131,12 +1139,29 @@ function App() {
                         />
                       </label>
 
+                      {evidencePreview ? (
+                        <p className={evidenceDuplicate ? 'hint warning' : 'hint'}>
+                          {evidenceDuplicate ? (
+                            <>
+                              Same page as <code>{evidenceDuplicate}</code> — the contract records both as{' '}
+                              <code>{evidencePreview}</code> and will refuse it. Scheme, <code>www.</code>, query and
+                              fragment do not make a new page.
+                            </>
+                          ) : (
+                            <>
+                              Recorded as <code>{evidencePreview}</code>
+                            </>
+                          )}
+                        </p>
+                      ) : null}
+
                       <button
                         className="button secondary full"
                         disabled={
                           !canSubmitEvidence ||
                           busy !== '' ||
-                          !evidenceUrl.trim()
+                          !evidenceUrl.trim() ||
+                          !!evidenceDuplicate
                         }
                         onClick={submitEvidence}
                       >
@@ -1170,9 +1195,15 @@ function App() {
                         <p className="hint warning">
                           Submit at least one official evidence URL before resolving.
                         </p>
+                      ) : remainingAttempts === 0 ? (
+                        <p className="hint warning">
+                          All {maxAttempts} adjudication attempts are spent. The market can only expire, and
+                          every bettor is refunded.
+                        </p>
                       ) : !hasNewEvidenceForResolution ? (
                         <p className="hint warning">
-                          Previous attempt returned UNKNOWN. New official evidence is required.
+                          Previous attempt returned UNKNOWN. A new official page is required — a variant of a page
+                          already submitted does not count.
                         </p>
                       ) : (
                         <p className="hint">
@@ -1199,12 +1230,26 @@ function App() {
                         </p>
                       ) : null}
 
-                      {selected.resolution_attempts > 0 &&
-                      selectedPhase === 'EVIDENCE' ? (
-                        <div className="last-attempt">
-                          <span>Last attempt</span>
-                          <strong>{selected.resolution_reason || 'UNKNOWN'}</strong>
-                        </div>
+                      <div className="last-attempt">
+                        <span>Adjudication budget</span>
+                        <strong>
+                          {remainingAttempts} of {maxAttempts} left
+                        </strong>
+                      </div>
+
+                      {(selected.attempt_log ?? []).length > 0 ? (
+                        <ol className="attempt-log">
+                          {(selected.attempt_log ?? []).map((a) => (
+                            <li key={a.attempt}>
+                              <span>Attempt {a.attempt}</span>
+                              <strong>{a.decision}</strong>
+                              <small>
+                                {a.reason || '—'} · {a.evidence_count} page{a.evidence_count === 1 ? '' : 's'} ·{' '}
+                                {formatDateTime(a.at)}
+                              </small>
+                            </li>
+                          ))}
+                        </ol>
                       ) : null}
 
                       <div className="expiry-box">
@@ -1262,6 +1307,24 @@ function App() {
                         <div className="result-row">
                           <span>AI resolution reason</span>
                           <p>{selected.resolution_reason}</p>
+                        </div>
+                      ) : null}
+
+                      {(selected.attempt_log ?? []).length > 0 ? (
+                        <div className="result-row">
+                          <span>Adjudication history</span>
+                          <ol className="attempt-log">
+                            {(selected.attempt_log ?? []).map((a) => (
+                              <li key={a.attempt}>
+                                <span>Attempt {a.attempt}</span>
+                                <strong>{a.decision}</strong>
+                                <small>
+                                  {a.reason || '—'} · {a.evidence_count} page{a.evidence_count === 1 ? '' : 's'} ·{' '}
+                                  {formatDateTime(a.at)}
+                                </small>
+                              </li>
+                            ))}
+                          </ol>
                         </div>
                       ) : null}
                     </div>
@@ -1371,7 +1434,7 @@ function App() {
 
       <footer>
         <div>
-          <strong>GenOracle V7</strong>
+          <strong>GenOracle V8</strong>
           <span>Official evidence · GenLayer consensus · deterministic settlement</span>
         </div>
         <span>{CONTRACT_ADDRESS}</span>

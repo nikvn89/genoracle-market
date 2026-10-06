@@ -1,4 +1,56 @@
-# TESTING — GenOracle V7
+# TESTING — GenOracle
+
+## Contract V8 (current) — on-chain run
+
+⟨Fill from the StudioNet run, then delete this line.⟩
+
+```text
+Contract V8:   ⟨V8 address⟩
+Deploy tx:     ⟨hash⟩
+Source SHA-256 fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80
+Frontend:      https://genoracle-market.vercel.app (pointed at V8)
+```
+
+Market `artemis-v8-01` — *Did NASA's Orion spacecraft splash down in the Pacific
+Ocean at the end of the Artemis I mission?* — authority `nasa.gov`. Wallet A
+creates and bets YES, wallet B bets NO.
+
+| # | Where / wallet | Action | Expected | Tx hash | Result |
+|---|---|---|---|---|---|
+| 1 | Studio | deploy `contracts/market.py` V8 | address; `get_config` reports `contract_version 8.0.0`, `clock_source transaction_datetime`, `max_resolution_attempts 3` | ⟨tx⟩ | ⟨result⟩ |
+| 2 | app · A, B | Get Demo G-USD (each) | 1000 G-USD each | ⟨tx⟩ ⟨tx⟩ | ⟨result⟩ |
+| 3 | app · A | create `artemis-v8-01`, deadline ≈ 3 minutes ahead | OPEN; `created_at` equals the transaction's timestamp in the explorer (**GO-3**) | ⟨tx⟩ | ⟨result⟩ |
+| 4 | app · A / B | bet YES 200 / bet NO 200 | pools 200 / 200 | ⟨tx⟩ ⟨tx⟩ | ⟨result⟩ |
+| 5 | app · A | after the deadline, submit `https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission/` | accepted; UI shows *Recorded as `nasa.gov/blogs/missions/…-mission`* | ⟨tx⟩ | ⟨result⟩ |
+| 6 | Studio · B | `submit_evidence("artemis-v8-01", "https://nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission?v=2")` | **reverted** *Evidence URL already submitted* — the non-`www`, query-string variant of the same page (**GO-1, GO-2**) | ⟨tx⟩ | ⟨result⟩ |
+| 7 | app · A | Resolve with GenLayer AI (≥ 60 s after the deadline) | `RESOLVED_YES`, a verbatim quote from the page, attempt log `Attempt 1 · YES` | ⟨tx⟩ | ⟨result⟩ |
+| 8 | app · A | Claim | A's balance 800 → 1200 | ⟨tx⟩ | ⟨result⟩ |
+| 9 | app · B | Claim | refused *No winning position* (shown in the UI before sending) | — | ⟨result⟩ |
+
+## Contract V8 — offline
+
+- **genvm-linter** `lint`, `schema`, `typecheck`: pass, 13 methods (8 write, 5 view,
+  including the new `normalize_evidence_url`). V7 failed `lint`.
+- **Deterministic suite:** 80 tests pass on Python 3.11, 3.12 and 3.13.
+- **GenVM Direct Mode suite:** 17 tests pass on the real py-genlayer v0.2.16 SDK.
+- **Mutation matrix:** 32/32 killed, each mutant run against both suites. The
+  first run left one survivor (a validator mutant that was equivalent: the quote
+  check below it already refused a foreign source); it was replaced by a real fault
+  (the validator skipping its own quote check), which is killed.
+- **Frontend:** `npm ci`, `npm run build` (no chunk-size warning), `npm test` 30/30,
+  including 15 golden vectors produced by the contract for the "Recorded as" preview.
+
+## What the V8 run does NOT prove
+
+- The model's verdict on other pages or questions; one market is resolved on-chain.
+- A market reaching its three-attempt cap on-chain; that path is covered offline
+  (deterministic and Direct Mode suites) only.
+- Divergence between validators' clocks under V7 was never observed on-chain;
+  V8 removes the precondition rather than fixing an observed failure.
+
+---
+
+# GenOracle V7 — previous deployment
 
 Final deployed contract:
 

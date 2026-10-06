@@ -166,23 +166,19 @@ class EvidenceAdmission(unittest.TestCase):
             h.contract.submit_evidence("late", "https://nasa.gov/a")
 
 
-class KnownWeaknesses(unittest.TestCase):
-    """CHARACTERIZATION -- asserts today's behaviour, not the desired one.
+class ClosedWeaknesses(unittest.TestCase):
+    """REGRESSION -- GO-1 and GO-2, closed in V8.
 
-    `_normalize_url` lowercases, drops the fragment and drops one trailing
-    slash. It does not drop `www.` and it does not drop the query string, while
-    `_url_matches_domain` *does* treat `www.` as the same host. So two spellings
-    of one page can occupy two evidence slots.
+    V7 kept `www.` and the query string in the duplicate key while the domain
+    matcher already ignored `www.`, so two spellings of one page took two
+    evidence slots, and a cosmetic variant (`?v=2`) satisfied the "new evidence"
+    gate in `resolve_market`, unlocking another adjudication of content the
+    validators had already read. One real page yielded the whole attempt budget.
 
-    That matters beyond a wasted slot. `resolve_market` gates a second
-    adjudication on `len(evidence) > last_attempt_evidence_count` -- "new
-    evidence is required before another resolution attempt". A cosmetic variant
-    of a page already submitted satisfies that counter, so the gate can be
-    stepped past without producing anything new for validators to read.
-
-    Both are tracked in SECURITY.md as GO-1 and GO-2. Fixing them changes the
-    contract and therefore needs a redeploy; these tests exist so the weakness
-    is recorded and measured rather than assumed away.
+    V8 records every URL under one canonical identity (host without `www.`,
+    path without trailing slashes, lower case; scheme, query and fragment
+    ignored) and caps adjudications at three per market regardless of how much
+    evidence arrives. Each test below was the end-to-end exploit in V7.
     """
 
     def setUp(self):
@@ -195,53 +191,89 @@ class KnownWeaknesses(unittest.TestCase):
         self.h.advance(70)
         self.h.set_sender(ALICE)
 
-    def test_www_variant_takes_a_second_evidence_slot(self):
-        """GO-1: www and non-www forms of one page are counted separately."""
+    def test_www_variant_cannot_take_a_second_evidence_slot(self):
+        """GO-1: the www form of a page already submitted is the same page."""
         self.h.contract.submit_evidence("m", "https://nasa.gov/report")
-        self.h.contract.submit_evidence("m", "https://www.nasa.gov/report")
-        self.assertEqual(len(self.h.market("m")["evidence"]), 2)
+        with self.assertRaises(self.h.module.gl.vm.UserError) as ctx:
+            self.h.contract.submit_evidence("m", "https://www.nasa.gov/report")
+        self.assertIn("already submitted", str(ctx.exception))
+        self.assertEqual(len(self.h.market("m")["evidence"]), 1)
 
-    def test_query_variant_unlocks_a_second_adjudication(self):
-        """GO-2: a query-string variant satisfies the new-evidence gate."""
+    def test_query_variant_cannot_unlock_a_second_adjudication(self):
+        """GO-2: a query-string variant is refused, so the gate holds."""
         h = self.h
         h.contract.submit_evidence("m", "https://nasa.gov/report")
         h.advance(60)
-
         h.set_nondet_result({"decision": "UNKNOWN", "source_url": "",
                              "evidence_quote": "", "reason": "NO_CONSENSUS"})
         h.contract.resolve_market("m")
+        self.assertEqual(h.market("m")["resolution_attempts"], 1)
+
+        for variant in ("https://nasa.gov/report?v=2", "https://www.nasa.gov/report/",
+                        "https://NASA.gov/report#top", "https://nasa.gov/report///?utm_source=x"):
+            with self.assertRaises(h.module.gl.vm.UserError):
+                h.contract.submit_evidence("m", variant)
+        with self.assertRaises(h.module.gl.vm.UserError) as ctx:
+            h.contract.resolve_market("m")
+        self.assertIn("New evidence is required", str(ctx.exception))
         self.assertEqual(h.market("m")["status"], "EVIDENCE")
         self.assertEqual(h.market("m")["resolution_attempts"], 1)
 
-        # Without new evidence the gate holds.
-        with self.assertRaises(h.module.gl.vm.UserError):
-            h.contract.resolve_market("m")
-
-        # A cosmetic variant of the same page steps past it.
-        h.contract.submit_evidence("m", "https://nasa.gov/report?v=2")
-        h.set_nondet_result({"decision": "YES",
-                             "source_url": "https://nasa.gov/report",
-                             "evidence_quote": "q", "reason": "r"})
-        h.contract.resolve_market("m")
-
-        self.assertEqual(h.market("m")["status"], "RESOLVED_YES")
-        self.assertEqual(h.market("m")["resolution_attempts"], 2)
-
-    def test_three_slots_allow_three_rolls_of_one_page(self):
-        """GO-2, upper bound: one real page yields the full attempt budget."""
+    def test_three_slots_need_three_distinct_pages(self):
+        """GO-2 upper bound: only distinct pages fill the evidence set."""
         h = self.h
-        urls = ["https://nasa.gov/report",
-                "https://nasa.gov/report?v=2",
-                "https://www.nasa.gov/report"]
-        h.contract.submit_evidence("m", urls[0])
-        h.contract.submit_evidence("m", urls[1])
+        h.contract.submit_evidence("m", "https://nasa.gov/report")
+        h.contract.submit_evidence("m", "https://nasa.gov/report-2")
         h.set_sender(BOB)
-        h.contract.submit_evidence("m", urls[2])
-        h.advance(60)
+        with self.assertRaises(h.module.gl.vm.UserError):
+            h.contract.submit_evidence("m", "https://www.nasa.gov/report?v=3")
+        h.contract.submit_evidence("m", "https://science.nasa.gov/report")
+        keys = [e["normalized_url"] for e in h.market("m")["evidence"]]
+        self.assertEqual(keys, ["nasa.gov/report", "nasa.gov/report-2", "science.nasa.gov/report"])
 
-        distinct_pages = {u.split("?")[0].replace("www.", "") for u in urls}
-        self.assertEqual(len(distinct_pages), 1)
-        self.assertEqual(len(h.market("m")["evidence"]), 3)
+    def test_attempt_budget_is_capped_independently_of_evidence(self):
+        """Three adjudications per market, then the only way out is expiry."""
+        h = self.h
+        unknown = {"decision": "UNKNOWN", "source_url": "", "evidence_quote": "", "reason": "R"}
+        pages = ["https://nasa.gov/a", "https://nasa.gov/b", "https://science.nasa.gov/c"]
+        for i, page in enumerate(pages):
+            h.set_sender(ALICE if i < 2 else BOB)
+            h.contract.submit_evidence("m", page)
+            h.advance(61)
+            h.set_nondet_result(unknown)
+            h.contract.resolve_market("m")
+        market = h.market("m")
+        self.assertEqual(market["resolution_attempts"], 3)
+        self.assertEqual([a["attempt"] for a in market["attempt_log"]], [1, 2, 3])
+        self.assertEqual([a["evidence_count"] for a in market["attempt_log"]], [1, 2, 3])
+        with self.assertRaises(h.module.gl.vm.UserError) as ctx:
+            h.contract.resolve_market("m")
+        self.assertIn("attempt budget is spent", str(ctx.exception))
+
+    def test_attempt_log_records_each_outcome_with_its_time(self):
+        h = self.h
+        h.contract.submit_evidence("m", "https://nasa.gov/report")
+        h.advance(60)
+        h.set_nondet_result({"decision": "UNKNOWN", "source_url": "", "evidence_quote": "",
+                             "reason": "NO_READABLE_EVIDENCE"})
+        t1 = h.now()
+        h.contract.resolve_market("m")
+        h.set_sender(BOB)
+        h.contract.submit_evidence("m", "https://nasa.gov/followup")
+        h.advance(5)
+        h.set_nondet_result({"decision": "YES", "source_url": "https://nasa.gov/followup",
+                             "evidence_quote": "q", "reason": "ok"})
+        h.contract.resolve_market("m")
+        log = h.market("m")["attempt_log"]
+        self.assertEqual([(a["decision"], a["reason"]) for a in log],
+                         [("UNKNOWN", "NO_READABLE_EVIDENCE"), ("YES", "ok")])
+        self.assertEqual(log[0]["at"], t1)
+        self.assertEqual(log[1]["at"], t1 + 5)
+
+    def test_normalize_view_matches_the_recorded_identity(self):
+        c = self.h.contract
+        self.assertEqual(c.normalize_evidence_url("HTTPS://WWW.NASA.GOV/Report/?x=1#y"), "nasa.gov/report")
+        self.assertEqual(c.normalize_evidence_url("x" * 513), "")
 
 
 if __name__ == "__main__":

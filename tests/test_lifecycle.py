@@ -8,7 +8,7 @@ validator consensus, which the deterministic suite does not simulate.
 
 import unittest
 
-from harness import Harness, ALICE, BOB, CAROL, MALLORY
+from harness import CONTRACT_PATH, Harness, ALICE, BOB, CAROL, MALLORY
 
 EXPIRY_PERIOD = 30 * 24 * 60 * 60
 EVIDENCE_WINDOW = 60
@@ -259,37 +259,44 @@ class Expiry(unittest.TestCase):
 
 
 class ClockSource(unittest.TestCase):
-    """CHARACTERIZATION -- GO-3, tracked in SECURITY.md.
+    """REGRESSION -- GO-3, closed in V8.
 
-    `_now()` reads `datetime.now(timezone.utc)`, which is the host's wall clock
-    at the moment that particular machine executes the method. It is not the
-    transaction's committed timestamp. Every deadline, every `created_at` and
-    every `submitted_at` written into state therefore comes from a value each
-    executing node produces independently.
-
-    The test below is what that looks like from the outside: move the clock and
-    the same call writes different state, with no transaction input changed.
-    On StudioNet this has never been observed to break a transaction, and the
-    test does not claim it has -- it records that the contract's time input is
-    host-derived rather than consensus-derived, which is the precondition for
-    the divergence, and it is why GO-3 is filed.
+    V7 read `datetime.now(timezone.utc)`, the host wall-clock of whichever
+    machine executed the call. V8 reads `gl.message_raw["datetime"]`, the
+    timestamp committed with the transaction, and converts it with integer
+    arithmetic, so every validator executing a call reads the same instant.
     """
 
-    def test_state_written_depends_on_the_host_clock(self):
+    def test_contract_source_no_longer_reads_the_host_clock(self):
+        source = open(CONTRACT_PATH, encoding="utf-8").read()
+        self.assertNotIn("import datetime", source)
+        self.assertNotIn("from datetime", source)
+        self.assertNotIn("datetime.now", source)
+        self.assertNotIn("time.time", source)
+        self.assertEqual(source.count('gl.message_raw["datetime"]'), 1)
+
+    def test_recorded_time_is_the_transaction_time(self):
         h = Harness(seed=1006)
         h.faucet(ALICE)
-
         h.set_time(1_800_000_000)
         h.create_market("a", ALICE, deadline=2_000_000_000)
-        first = h.market("a")["created_at"]
+        self.assertEqual(h.market("a")["created_at"], 1_800_000_000)
 
-        h.set_time(1_800_000_042)
-        h.create_market("b", ALICE, deadline=2_000_000_000)
-        second = h.market("b")["created_at"]
-
-        # Identical calldata, different recorded state.
-        self.assertNotEqual(first, second)
-        self.assertEqual(second - first, 42)
+    def test_datetime_arithmetic_matches_the_calendar(self):
+        import datetime as dt
+        h = Harness(seed=7)
+        cases = ["1970-01-01T00:00:00Z", "2024-02-29T23:59:59Z", "2026-12-31T12:00:00.123Z",
+                 "2027-01-01T00:00:00+00:00", "2100-03-01T06:30:15Z", "2000-02-29T00:00:01.5Z"]
+        for raw in cases:
+            h.gl.message_raw["datetime"] = raw
+            expected = int(dt.datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp())
+            self.assertEqual(h.contract._now(), expected, raw)
+        h.gl.message_raw["datetime"] = "2026-10-06T09:00:00+07:00"
+        self.assertEqual(h.contract._now(), int(dt.datetime(2026, 10, 6, 2, 0, tzinfo=dt.timezone.utc).timestamp()))
+        for bad in ("", "not a date", "2026-13-01T00:00:00Z", "2026-10-06 09:00:00", "2026-10-06T09:00:00+0700"):
+            h.gl.message_raw["datetime"] = bad
+            with self.assertRaises(h.module.gl.vm.UserError):
+                h.contract._now()
 
 
 if __name__ == "__main__":

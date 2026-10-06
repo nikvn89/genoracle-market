@@ -14,23 +14,30 @@ npm install       # clean clone, no browser download
 npm run build     # tsc -b && vite build
 ```
 
-Requires Node 18+. `contracts/market.py` is the deployed Intelligent Contract at
-`0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7` on GenLayer StudioNet; it is the
-only file in `contracts/`. Deploy and probe tooling lives in `scripts/`.
+Requires Node 18+. `contracts/market.py` is contract **V8**, deployed at
+⟨V8 address⟩ on GenLayer StudioNet (source SHA-256
+`fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80`); it is the only
+file in `contracts/`. V7 remains readable at
+`0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`. Deploy and probe tooling lives in
+`scripts/`.
 
 ## Tests
 
 ```bash
-npm test                                     # 12 frontend tests
-python3 -m unittest discover -s tests -v     # 71 tests over the deployed contract
-python3 tests/mutation_check.py              # 22 mutants, 22 killed
+npm test                                         # 30 frontend tests
+python3 -m unittest discover -s tests -v         # 80 deterministic contract tests
+pip install -r requirements-test.txt
+python3 -m pytest tests/direct -q                # 17 tests on the real GenVM (Direct Mode)
+python3 tests/mutation_check.py                  # 32 mutants, 32 killed
 ```
 
-The Python suite needs no packages, no GenVM, no network and no wallet. It imports
-`contracts/market.py` verbatim, so it always tests the file in this repository.
-Validator consensus is not simulated — see [tests/README.md](tests/README.md)
-for exactly where the line is drawn, and [SECURITY.md](SECURITY.md) for the
-trust boundaries and the three open weaknesses the suite pins down.
+The deterministic suite needs no packages, no GenVM, no network and no wallet;
+the Direct Mode suite runs the contract inside the real py-genlayer v0.2.16 SDK
+with page renders and model answers mocked. Both import `contracts/market.py`
+verbatim. Validator consensus itself is not simulated — see
+[tests/README.md](tests/README.md) for exactly where the line is drawn, and
+[SECURITY.md](SECURITY.md) for the trust boundaries, the three weaknesses V8
+closed and what remains open.
 
 See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
@@ -70,7 +77,7 @@ Winner Claims
 
 If the evidence is insufficient, the market remains in the evidence phase so new evidence can be added. If no conclusive resolution is reached before expiry, the market fails closed and bettors can reclaim their positions.
 
-## V7 Resolution Model
+## Resolution Model
 
 Each market permanently commits to:
 
@@ -125,7 +132,7 @@ Claims are sender-bound and positions are zeroed after settlement, preventing do
 
 ## Supported Authorities
 
-The current V7 demo whitelist includes:
+The demo whitelist includes:
 
 - `fifa.com`
 - `uefa.com`
@@ -244,13 +251,14 @@ https://genoracle-market.vercel.app
 **GitHub**  
 https://github.com/nikvn89/genoracle-market
 
-**GenLayer Studio Contract**  
-https://explorer-studio.genlayer.com/address/0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
+**GenLayer Studio Contract (V8)**  
+https://explorer-studio.genlayer.com/address/⟨V8 address⟩
 
 **Contract address**
 
 ```text
-0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
+V8 (current)   ⟨V8 address⟩
+V7 (previous)  0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
 ```
 
 This is a StudioNet deployment, so a Project Explorer listing should be treated as **Preview** rather than Live.
@@ -276,8 +284,13 @@ This is a StudioNet deployment, so a Project Explorer listing should be treated 
 - sender must match the betting/claim address,
 - authority is committed before betting,
 - submitted evidence must use HTTPS and match the committed domain,
-- duplicate evidence is rejected,
-- evidence submission is capped,
+- duplicate evidence is rejected under one canonical identity per page
+  (`www.`, query, fragment, case and trailing slashes do not make a new page),
+- evidence submission is capped, and a market gets at most three
+  adjudications, each recorded in a public attempt log,
+- every deadline uses the timestamp committed with the transaction,
+- the question and the rendered pages are fenced in the prompt, and a page
+  cannot close its own evidence block,
 - irrelevant evidence should be discarded rather than treated as an UNKNOWN vote,
 - YES/NO verdicts require quote-grounded evidence,
 - UNKNOWN does not immediately trigger refunds,
@@ -288,27 +301,20 @@ This is a StudioNet deployment, so a Project Explorer listing should be treated 
 Each of these is covered by a named test in [`tests/`](tests/README.md), and the
 mutation matrix confirms the tests fail when the property is broken.
 
-One earlier claim has been withdrawn. This section previously read *"repeat
-resolution requires new evidence"*. The contract counts evidence URLs rather
-than distinct pages, so a cosmetic variant of a page validators have already
-read — a different query string, or the `www.` form — satisfies that counter.
-The gate is weaker than the sentence promised. It is tracked as **GO-2** in
-[SECURITY.md](SECURITY.md) with a test that drives the bypass end to end, and it
-is queued for the next contract release.
+In V7 this section read *"repeat resolution requires new evidence"*, and the
+contract did not live up to it: a cosmetic variant of a page validators had
+already read satisfied the counter (**GO-2**). V8 makes the sentence true — the
+gate counts distinct pages — and adds a hard cap of three adjudications on top.
 
 ## Limitations
 
 GenOracle relies on the availability and integrity of the authoritative websites selected by market creators. Official pages can change, disappear, become unavailable, or render differently over time.
 
-Three weaknesses are known, open and documented rather than hidden: the
-anti-grinding gate can be stepped past with a cosmetic URL variant (**GO-2**),
-`www.` and non-`www.` spellings of one page occupy two evidence slots
-(**GO-1**), and the contract's clock is host wall-clock rather than the
-timestamp committed with the transaction (**GO-3**). Each has a test that
-asserts the current behaviour. [SECURITY.md](SECURITY.md) has the detail and the
-fix direction; all three require a contract redeploy.
+The three weaknesses disclosed in v1.3.0 (GO-1, GO-2, GO-3) are closed in V8;
+what remains open — query-addressed pages collapsing to one identity, aliases of
+one page still counting twice — is listed in [SECURITY.md](SECURITY.md).
 
-V7 intentionally does not add token incentives, evidence bonds, reputation
+GenOracle intentionally does not add token incentives, evidence bonds, reputation
 systems or a dispute court. The goal is a simple public GenLayer demonstration
 of permissionless evidence submission, decentralized AI adjudication and
 deterministic settlement.

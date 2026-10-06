@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "url": "https://nasa.gov/report",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://www.nasa.gov/report",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://WWW.NASA.GOV/Report/",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://nasa.gov/report?v=2",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://nasa.gov/report/?utm_source=x#top",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://nasa.gov/report///",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "http://www.nasa.gov/report",
+      "recorded_as": "nasa.gov/report"
+    },
+    {
+      "url": "https://science.nasa.gov/missions/artemis-ii",
+      "recorded_as": "science.nasa.gov/missions/artemis-ii"
+    },
+    {
+      "url": "https://www.fifa.com/en/tournaments/mens/worldcup?tab=results",
+      "recorded_as": "fifa.com/en/tournaments/mens/worldcup"
+    },
+    {
+      "url": "  https://bls.gov/news.release/cpi.nr0.htm\t",
+      "recorded_as": "bls.gov/news.release/cpi.nr0.htm"
+    },
+    {
+      "url": "\u001chttps://sec.gov/x",
+      "recorded_as": "sec.gov/x"
+    },
+    {
+      "url": "https://nasa.gov",
+      "recorded_as": "nasa.gov"
+    },
+    {
+      "url": "https://nasa.gov/",
+      "recorded_as": "nasa.gov"
+    },
+    {
+      "url": "https://nasa.gov/a#b?c",
+      "recorded_as": "nasa.gov/a"
+    },
+    {
+      "url": "",
+      "recorded_as": ""
+    }
+  ]
+}

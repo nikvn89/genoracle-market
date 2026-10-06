@@ -10,7 +10,7 @@ tests, 17 GenVM Direct Mode tests that run the contract inside the real
 py-genlayer SDK, and a 32-mutant matrix that confirms they fail when the
 property they defend is broken.
 
-Contract V8 (current): ⟨V8 address⟩ — source SHA-256
+Contract V8 (current): `0xf076703b8EE0b4b9feba427335Bf2D7331A0E192` — source SHA-256
 `fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80`.
 Contract V7 (previous, still readable): `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`.
 

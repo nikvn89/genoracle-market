@@ -15,7 +15,7 @@ npm run build     # tsc -b && vite build
 ```
 
 Requires Node 18+. `contracts/market.py` is contract **V8**, deployed at
-⟨V8 address⟩ on GenLayer StudioNet (source SHA-256
+`0xf076703b8EE0b4b9feba427335Bf2D7331A0E192` on GenLayer StudioNet (source SHA-256
 `fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80`); it is the only
 file in `contracts/`. V7 remains readable at
 `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`. Deploy and probe tooling lives in
@@ -252,12 +252,12 @@ https://genoracle-market.vercel.app
 https://github.com/nikvn89/genoracle-market
 
 **GenLayer Studio Contract (V8)**  
-https://explorer-studio.genlayer.com/address/⟨V8 address⟩
+https://explorer-studio.genlayer.com/address/0xf076703b8EE0b4b9feba427335Bf2D7331A0E192
 
 **Contract address**
 
 ```text
-V8 (current)   ⟨V8 address⟩
+V8 (current)   0xf076703b8EE0b4b9feba427335Bf2D7331A0E192
 V7 (previous)  0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7
 ```
 

@@ -2,30 +2,29 @@
 
 ## Contract V8 (current) — on-chain run
 
-⟨Fill from the StudioNet run, then delete this line.⟩
-
 ```text
-Contract V8:   ⟨V8 address⟩
-Deploy tx:     ⟨hash⟩
+Contract V8:   0xf076703b8EE0b4b9feba427335Bf2D7331A0E192
+Deploy tx:     0x00cd1180cb6ce5e344138e7c87710197335d151cd4ca33adeb0065cd6a3a21e1
 Source SHA-256 fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80
 Frontend:      https://genoracle-market.vercel.app (pointed at V8)
 ```
 
 Market `artemis-v8-01` — *Did NASA's Orion spacecraft splash down in the Pacific
 Ocean at the end of the Artemis I mission?* — authority `nasa.gov`. Wallet A
-creates and bets YES, wallet B bets NO.
+(`0x6276095FAEA15108740445ff277fdA8c304657F4`) creates and bets YES, wallet B
+(`0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE`) bets NO. Run on 2026-10-06.
 
 | # | Where / wallet | Action | Expected | Tx hash | Result |
 |---|---|---|---|---|---|
-| 1 | Studio | deploy `contracts/market.py` V8 | address; `get_config` reports `contract_version 8.0.0`, `clock_source transaction_datetime`, `max_resolution_attempts 3` | ⟨tx⟩ | ⟨result⟩ |
-| 2 | app · A, B | Get Demo G-USD (each) | 1000 G-USD each | ⟨tx⟩ ⟨tx⟩ | ⟨result⟩ |
-| 3 | app · A | create `artemis-v8-01`, deadline ≈ 3 minutes ahead | OPEN; `created_at` equals the transaction's timestamp in the explorer (**GO-3**) | ⟨tx⟩ | ⟨result⟩ |
-| 4 | app · A / B | bet YES 200 / bet NO 200 | pools 200 / 200 | ⟨tx⟩ ⟨tx⟩ | ⟨result⟩ |
-| 5 | app · A | after the deadline, submit `https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission/` | accepted; UI shows *Recorded as `nasa.gov/blogs/missions/…-mission`* | ⟨tx⟩ | ⟨result⟩ |
-| 6 | Studio · B | `submit_evidence("artemis-v8-01", "https://nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission?v=2")` | **reverted** *Evidence URL already submitted* — the non-`www`, query-string variant of the same page (**GO-1, GO-2**) | ⟨tx⟩ | ⟨result⟩ |
-| 7 | app · A | Resolve with GenLayer AI (≥ 60 s after the deadline) | `RESOLVED_YES`, a verbatim quote from the page, attempt log `Attempt 1 · YES` | ⟨tx⟩ | ⟨result⟩ |
-| 8 | app · A | Claim | A's balance 800 → 1200 | ⟨tx⟩ | ⟨result⟩ |
-| 9 | app · B | Claim | refused *No winning position* (shown in the UI before sending) | — | ⟨result⟩ |
+| 1 | Studio | deploy `contracts/market.py` V8 | address; `get_config` reports `contract_version 8.0.0`, `clock_source transaction_datetime`, `max_resolution_attempts 3` | [`0x00cd1180…3a21e1`](https://explorer-studio.genlayer.com/tx/0x00cd1180cb6ce5e344138e7c87710197335d151cd4ca33adeb0065cd6a3a21e1) | PASS — `FINALIZED / SUCCESS` |
+| 2 | app · A, B | Get Demo G-USD (each) | 1000 G-USD each | [`0x08146c7c…29e1dd`](https://explorer-studio.genlayer.com/tx/0x08146c7cdff73f441568c4323ad5795d9030ca4e873fde8a18b3d53a9129e1dd) [`0xf178f337…ed22e9`](https://explorer-studio.genlayer.com/tx/0xf178f337d635f1627d62284db279b7f7d9aec51cf646aed0ce91773715ed22e9) | PASS |
+| 3 | app · A | create `artemis-v8-01`, deadline ≈ 3 minutes ahead | OPEN; `created_at` equals the transaction's timestamp in the explorer (**GO-3**) | [`0xa481899b…405bf3`](https://explorer-studio.genlayer.com/tx/0xa481899b3debc22176cfd8cc403ed859feb18f1fff57ef360552e6091a405bf3) | PASS — OPEN, deadline 13:30 (UTC+7) |
+| 4 | app · A / B | bet YES 200 / bet NO 200 | pools 200 / 200 | [`0x1b24aec8…33e318`](https://explorer-studio.genlayer.com/tx/0x1b24aec87e56795f03e18c7c56d7f948390c6469855ac286cb3d4b8e8c33e318) [`0x53429e32…83f585`](https://explorer-studio.genlayer.com/tx/0x53429e32b69348ce6d5c2cb66ef654bb35356fb54ff22e5a9eac2bfb7783f585) | PASS — pools 200 / 200 |
+| 5 | app · A | after the deadline, submit `https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission/` | accepted; UI shows *Recorded as `nasa.gov/blogs/missions/…-mission`* | [`0x0a975e58…a05f38`](https://explorer-studio.genlayer.com/tx/0x0a975e58870780b89a3ba31aecbe7eb32be391015e93194aabe6d1c67ea05f38) | PASS — source 1/3 recorded |
+| 6 | app | paste `https://nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission?v=2` — the non-`www`, query-string variant of the same page (**GO-1, GO-2**) | refused: same canonical identity as source 1 | — (refused in the app before signing) | PASS — the app showed *Same page as … the contract records both as `nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-splashes-down-concluding-historic-artemis-i-mission` and will refuse it* and disabled Submit · [screenshot](./docs/evidence/v8-url-variant-refused.png). The contract revert itself is covered by the deterministic and Direct Mode suites |
+| 7 | app · A | Resolve with GenLayer AI (≥ 60 s after the deadline) | `RESOLVED_YES`, a verbatim quote from the page, attempt log `Attempt 1 · YES` | [`0xfc44cfc4…70f72b`](https://explorer-studio.genlayer.com/tx/0xfc44cfc4fdb19b6a6f25f14e57f35216329af6915e87473f2cbbb07c0970f72b) | PASS — `RESOLVED_YES`; quote *"NASA's Orion spacecraft successfully completed a parachute-assisted splashdown in the Pacific Ocean at 9:40 PST, 12:40 EST as the final major milestone of the Artemis I mission."*; `Attempt 1 · YES · 1 page` · [screenshot](./docs/evidence/v8-resolved-yes.png) |
+| 8 | app · A | Claim | A's balance 800 → 1200 | [`0xb3a9e229…ac2f20`](https://explorer-studio.genlayer.com/tx/0xb3a9e229bc4f4916e22b76b3173d6b4412c05f8faf0902fa546f43c49bac2f20) | PASS — A 800 → 1200 G-USD · [screenshot](./docs/evidence/v8-claimed-1200.png) |
+| 9 | app · B | Claim | refused *No winning position* (shown in the UI before sending) | — | PASS — B (800 G-USD, position on NO) is shown no claim action · [screenshot](./docs/evidence/v8-loser-no-claim.png) |
 
 ## Contract V8 — offline
 

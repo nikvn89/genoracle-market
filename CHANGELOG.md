@@ -13,7 +13,7 @@ real GenVM runtime.
 
 **Contract changed — fresh deployment.** `contracts/market.py` V8 (SHA-256
 `fe5c4c086e45414d6b222087d77e66e1d12f7949294f1152be3999b68379cc80`) is deployed
-at ⟨V8 address⟩. Storage is not migrated; V7 stays readable at
+at `0xf076703b8EE0b4b9feba427335Bf2D7331A0E192`. Storage is not migrated; V7 stays readable at
 `0x89DBE40beA0DF050aB9EFf4BE6a98544A799e5E7`.
 
 ### Fixed (contract)
